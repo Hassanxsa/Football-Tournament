@@ -2,6 +2,9 @@ const express = require('express');
 const app = express();
 const PORT = 3000; // or any port you prefer
 
+
+const db = require('./db');
+
 // Define a route
 app.get('/', (req, res) => {
   res.send('Hello, World from Express!');
