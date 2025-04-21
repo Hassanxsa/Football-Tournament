@@ -3,6 +3,14 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './pages/Home/Home';
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
+import TournamentDetails from './pages/TournamentDetails/TournamentDetails';
+import Tournaments from './pages/Tournaments/Tournaments';
+import TeamDetails from './pages/TeamDetails/TeamDetails';
+import Teams from './pages/Teams/Teams';
+import MatchDetails from './pages/MatchDetails/MatchDetails';
+import Players from './pages/Players/Players';
+import PlayerDetails from './pages/PlayerDetails/PlayerDetails';
+import Venues from './pages/Venues/Venues';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 
@@ -21,6 +29,58 @@ function App() {
               <Home />
             </PrivateRoute>
           } />
+    
+          {/* Tournament Routes */}
+          <Route path="/tournaments" element={
+            <PrivateRoute>
+              <Tournaments />
+            </PrivateRoute>
+          } />
+          <Route path="/tournaments/:id" element={
+            <PrivateRoute>
+              <TournamentDetails />
+            </PrivateRoute>
+          } />
+          
+          {/* Team Routes */}
+          <Route path="/teams" element={
+            <PrivateRoute>
+              <Teams />
+            </PrivateRoute>
+          } />
+          <Route path="/teams/:id" element={
+            <PrivateRoute>
+              <TeamDetails />
+            </PrivateRoute>
+          } />
+          
+          {/* Match Routes */}
+          <Route path="/matches/:id" element={
+            <PrivateRoute>
+              <MatchDetails />
+            </PrivateRoute>
+          } />
+          
+          {/* Players Routes */}
+          <Route path="/players" element={
+            <PrivateRoute>
+              <Players />
+            </PrivateRoute>
+          } />
+          <Route path="/players/:id" element={
+            <PrivateRoute>
+              <PlayerDetails />
+            </PrivateRoute>
+          } />
+          
+          {/* Venues Routes */}
+          <Route path="/venues" element={
+            <PrivateRoute>
+              <Venues />
+            </PrivateRoute>
+          } />
+          
+          {/* Admin Routes */}
           <Route path="/admin/tournaments" element={
             <PrivateRoute>
               <Home />
