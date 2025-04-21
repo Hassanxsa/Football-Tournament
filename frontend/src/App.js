@@ -29,7 +29,7 @@ function App() {
               <Home />
             </PrivateRoute>
           } />
-          
+    
           {/* Tournament Routes */}
           <Route path="/tournaments" element={
             <PrivateRoute>
