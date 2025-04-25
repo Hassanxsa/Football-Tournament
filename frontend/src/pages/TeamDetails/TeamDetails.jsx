@@ -20,75 +20,260 @@ const TeamDetails = () => {
     { player_id: 1009, team_id: 1216, tr_id: 1, name: 'Fahd', jersey_no: 5, position_to_play: 'FD', position_desc: 'Forwards', date_of_birth: '2008-03-10' },
   ];
 
-  // Tournament teams
+  // Tournament teams for unified league format
   const tournamentTeams = [
-    { team_id: 1214, tr_id: 1, team_name: 'CCM', team_group: 'A', match_played: 3, won: 0, draw: 3, lost: 0, goal_for: 4, goal_against: 4, goal_diff: 0, points: 3, group_position: 1 },
-    { team_id: 1214, tr_id: 3, team_name: 'CCM', team_group: 'C', match_played: 3, won: 1, draw: 1, lost: 1, goal_for: 1, goal_against: 2, goal_diff: -1, points: 4, group_position: 2 },
-    { team_id: 1215, tr_id: 1, team_name: 'KBS', team_group: 'B', match_played: 3, won: 1, draw: 1, lost: 1, goal_for: 3, goal_against: 4, goal_diff: -1, points: 4, group_position: 2 },
+    // Tournament 1 - KFUPM Faculty League
+    { team_id: 1214, tr_id: 1, team_name: 'CCM', match_played: 7, won: 6, draw: 1, lost: 0, goal_for: 19, goal_against: 6, goal_diff: 13, points: 19 },
+    { team_id: 1216, tr_id: 1, team_name: 'CEP', match_played: 7, won: 5, draw: 1, lost: 1, goal_for: 15, goal_against: 7, goal_diff: 8, points: 16 },
+    { team_id: 1215, tr_id: 1, team_name: 'KBS', match_played: 7, won: 4, draw: 2, lost: 1, goal_for: 11, goal_against: 8, goal_diff: 3, points: 14 },
+    { team_id: 1218, tr_id: 1, team_name: 'CIE', match_played: 7, won: 4, draw: 0, lost: 3, goal_for: 12, goal_against: 10, goal_diff: 2, points: 12 },
+    { team_id: 1219, tr_id: 1, team_name: 'MGE', match_played: 7, won: 3, draw: 1, lost: 3, goal_for: 10, goal_against: 9, goal_diff: 1, points: 10 },
+    { team_id: 1220, tr_id: 1, team_name: 'CHE', match_played: 7, won: 2, draw: 3, lost: 2, goal_for: 8, goal_against: 9, goal_diff: -1, points: 9 },
+    { team_id: 1221, tr_id: 1, team_name: 'ARC', match_played: 7, won: 2, draw: 2, lost: 3, goal_for: 7, goal_against: 9, goal_diff: -2, points: 8 },
+    { team_id: 1217, tr_id: 1, team_name: 'CPG', match_played: 7, won: 1, draw: 2, lost: 4, goal_for: 5, goal_against: 12, goal_diff: -7, points: 5 },
+    { team_id: 1222, tr_id: 1, team_name: 'COE', match_played: 7, won: 0, draw: 2, lost: 5, goal_for: 4, goal_against: 14, goal_diff: -10, points: 2 },
+    { team_id: 1223, tr_id: 1, team_name: 'ICS', match_played: 7, won: 0, draw: 0, lost: 7, goal_for: 3, goal_against: 10, goal_diff: -7, points: 0 },
+    
+    // Tournament 2 - KFUPM Student League
+    { team_id: 1214, tr_id: 2, team_name: 'CCM', match_played: 5, won: 4, draw: 1, lost: 0, goal_for: 12, goal_against: 3, goal_diff: 9, points: 13 },
+    { team_id: 1224, tr_id: 2, team_name: 'PHY', match_played: 5, won: 3, draw: 1, lost: 1, goal_for: 10, goal_against: 5, goal_diff: 5, points: 10 },
+    { team_id: 1225, tr_id: 2, team_name: 'LAS', match_played: 5, won: 3, draw: 0, lost: 2, goal_for: 8, goal_against: 7, goal_diff: 1, points: 9 },
+    { team_id: 1217, tr_id: 2, team_name: 'CPG', match_played: 5, won: 2, draw: 2, lost: 1, goal_for: 7, goal_against: 5, goal_diff: 2, points: 8 },
+    { team_id: 1226, tr_id: 2, team_name: 'EED', match_played: 5, won: 2, draw: 1, lost: 2, goal_for: 6, goal_against: 8, goal_diff: -2, points: 7 },
+    { team_id: 1215, tr_id: 2, team_name: 'KBS', match_played: 5, won: 1, draw: 2, lost: 2, goal_for: 5, goal_against: 6, goal_diff: -1, points: 5 },
+    { team_id: 1227, tr_id: 2, team_name: 'ACC', match_played: 5, won: 1, draw: 0, lost: 4, goal_for: 3, goal_against: 10, goal_diff: -7, points: 3 },
+    { team_id: 1228, tr_id: 2, team_name: 'BIO', match_played: 5, won: 0, draw: 1, lost: 4, goal_for: 2, goal_against: 9, goal_diff: -7, points: 1 }
   ];
 
-  // Matches involving this team
+  // Matches involving this team - mix of played and upcoming that match the standings statistics
   const matches = [
+    // Week 1 Matches
     {
       match_no: 1,
       play_stage: 'G',
-      play_date: '2023-03-11',
+      play_date: '2023-03-01',
       team_id1: 1214,
-      team_id2: 1215,
+      team_id2: 1223,
       team_name1: 'CCM',
-      team_name2: 'KBS',
+      team_name2: 'ICS',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-0',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 1,
+      tournament_name: 'Faculty Tournament'
+    },
+    {
+      match_no: 6,
+      play_stage: 'G',
+      play_date: '2023-03-05',
+      team_id1: 1214,
+      team_id2: 1222,
+      team_name1: 'CCM',
+      team_name2: 'COE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '4-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 1,
+      tournament_name: 'Faculty Tournament'
+    },
+    {
+      match_no: 11,
+      play_stage: 'G',
+      play_date: '2023-03-10',
+      team_id1: 1214,
+      team_id2: 1217,
+      team_name1: 'CCM',
+      team_name2: 'CPG',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 1,
+      tournament_name: 'Faculty Tournament'
+    },
+    {
+      match_no: 16,
+      play_stage: 'G',
+      play_date: '2023-03-14',
+      team_id1: 1214,
+      team_id2: 1218,
+      team_name1: 'CCM',
+      team_name2: 'CIE',
+      status: 'completed',
       results: 'WIN',
       goal_score: '2-1',
       venue_id: 11,
       venue_name: 'Main Stadium',
       tr_id: 1,
-      tournament_name: 'KFUPM Cup'
+      tournament_name: 'Faculty Tournament'
     },
     {
-      match_no: 2,
+      match_no: 21,
       play_stage: 'G',
-      play_date: '2023-03-11',
-      team_id1: 1215,
-      team_id2: 1216,
-      team_name1: 'KBS',
-      team_name2: 'CEP',
+      play_date: '2023-03-19',
+      team_id1: 1214,
+      team_id2: 1215,
+      team_name1: 'CCM',
+      team_name2: 'KBS',
+      status: 'completed',
       results: 'DRAW',
-      goal_score: '1-1',
-      venue_id: 22,
-      venue_name: 'Indoor Stadium',
-      tr_id: 1,
-      tournament_name: 'KFUPM Cup'
-    },
-    {
-      match_no: 3,
-      play_stage: 'F',
-      play_date: '2023-03-12',
-      team_id1: 1214,
-      team_id2: 1215,
-      team_name1: 'CCM',
-      team_name2: 'KBS',
-      results: 'LOSS',
-      goal_score: '1-3',
-      venue_id: 33,
-      venue_name: 'Jabal Field',
-      tr_id: 1,
-      tournament_name: 'KFUPM Cup'
-    },
-    {
-      match_no: 4,
-      play_stage: 'G',
-      play_date: '2023-03-13',
-      team_id1: 1214,
-      team_id2: 1215,
-      team_name1: 'CCM',
-      team_name2: 'KBS',
-      results: 'WIN',
-      goal_score: '5-1',
+      goal_score: '2-2',
       venue_id: 11,
       venue_name: 'Main Stadium',
       tr_id: 1,
-      tournament_name: 'KFUPM Cup'
+      tournament_name: 'Faculty Tournament'
     },
+    {
+      match_no: 26,
+      play_stage: 'G',
+      play_date: '2023-03-23',
+      team_id1: 1214,
+      team_id2: 1219,
+      team_name1: 'CCM',
+      team_name2: 'MGE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 1,
+      tournament_name: 'Faculty Tournament'
+    },
+    {
+      match_no: 31,
+      play_stage: 'G',
+      play_date: '2023-03-27',
+      team_id1: 1214,
+      team_id2: 1220,
+      team_name1: 'CCM',
+      team_name2: 'CHE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 1,
+      tournament_name: 'Faculty Tournament'
+    },
+    // Upcoming Matches
+    {
+      match_no: 36,
+      play_stage: 'Q',
+      play_date: '2023-04-02',
+      team_id1: 1214,
+      team_id2: 1218,
+      team_name1: 'CCM',
+      team_name2: 'CIE',
+      status: 'scheduled',
+      results: '',
+      goal_score: '-',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 1,
+      tournament_name: 'Faculty Tournament'
+    },
+    // Student League matches
+    {
+      match_no: 101,
+      play_stage: 'G',
+      play_date: '2023-02-15',
+      team_id1: 1214,
+      team_id2: 1227,
+      team_name1: 'CCM',
+      team_name2: 'ACC',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-0',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium',
+      tr_id: 2,
+      tournament_name: 'Student Tournament'
+    },
+    {
+      match_no: 105,
+      play_stage: 'G',
+      play_date: '2023-02-22',
+      team_id1: 1214,
+      team_id2: 1225,
+      team_name1: 'CCM',
+      team_name2: 'LAS',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 2,
+      tournament_name: 'Student Tournament'
+    },
+    {
+      match_no: 110,
+      play_stage: 'G',
+      play_date: '2023-03-01',
+      team_id1: 1214,
+      team_id2: 1226,
+      team_name1: 'CCM',
+      team_name2: 'EED',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-0',
+      venue_id: 33,
+      venue_name: 'Jabal Field',
+      tr_id: 2,
+      tournament_name: 'Student Tournament'
+    },
+    {
+      match_no: 115,
+      play_stage: 'G',
+      play_date: '2023-03-08',
+      team_id1: 1214,
+      team_id2: 1215,
+      team_name1: 'CCM',
+      team_name2: 'KBS',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-2',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 2,
+      tournament_name: 'Student Tournament'
+    },
+    {
+      match_no: 120,
+      play_stage: 'G',
+      play_date: '2023-03-15',
+      team_id1: 1224,
+      team_id2: 1214,
+      team_name1: 'PHY',
+      team_name2: 'CCM',
+      status: 'completed',
+      results: 'DRAW',
+      goal_score: '2-2',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium',
+      tr_id: 2,
+      tournament_name: 'Student Tournament'
+    },
+    {
+      match_no: 125,
+      play_stage: 'S',
+      play_date: '2023-04-05',
+      team_id1: 1214,
+      team_id2: 1224,
+      team_name1: 'CCM',
+      team_name2: 'PHY',
+      status: 'scheduled',
+      results: '',
+      goal_score: '-',
+      venue_id: 11,
+      venue_name: 'Main Stadium',
+      tr_id: 2,
+      tournament_name: 'Student Tournament'
+    }
   ];
 
   // Filter team data
@@ -279,6 +464,115 @@ const TeamDetails = () => {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                </div>
+
+                {/* Tournament Standings Section */}
+                <div className="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+                  <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-gray-50">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">Tournament Standings</h3>
+                    {teamTournaments.length > 0 && (
+                      <Link to={`/tournaments/${teamTournaments[0].tr_id}`} className="text-sm text-blue-600 hover:text-blue-800">
+                        View Tournament
+                      </Link>
+                    )}
+                  </div>
+                  <div className="border-t border-gray-200 p-4">
+                    {teamTournaments.length > 0 ? (
+                      <div>
+                        {/* Tournament selector if team is in multiple tournaments */}
+                        {teamTournaments.length > 1 && (
+                          <div className="mb-4">
+                            <label htmlFor="tournament-select" className="block text-sm font-medium text-gray-700 mb-1">
+                              Select Tournament:
+                            </label>
+                            <select
+                              id="tournament-select"
+                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                            >
+                              {teamTournaments.map((tournament) => (
+                                <option key={tournament.tr_id} value={tournament.tr_id}>
+                                  Tournament #{tournament.tr_id}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pos</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">MP</th>
+                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">W</th>
+                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">D</th>
+                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">L</th>
+                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GF</th>
+                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GA</th>
+                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GD</th>
+                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">PTS</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {/* Get all teams from the current tournament (tr_id) and sort by points */}
+                              {tournamentTeams
+                                .filter(team => team.tr_id === teamTournaments[0]?.tr_id)
+                                .sort((a, b) => {
+                                  if (a.points !== b.points) return b.points - a.points; 
+                                  if (a.goal_diff !== b.goal_diff) return b.goal_diff - a.goal_diff;
+                                  return b.goal_for - a.goal_for;
+                                })
+                                .map((team, index) => (
+                                  <tr key={team.team_id} 
+                                      className={team.team_id === parseInt(id) ? 
+                                        "bg-blue-50 font-medium" : 
+                                        index < 2 ? "bg-green-50 hover:bg-green-100" : "hover:bg-gray-50"}>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                      <Link to={`/teams/${team.team_id}`} className="font-medium hover:text-blue-600">
+                                        {team.team_name}
+                                      </Link>
+                                      {team.team_id === parseInt(id) && (
+                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                          Your Team
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.match_played}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.won}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.draw}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.lost}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_for}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_against}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_diff}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 text-center">{team.points}</td>
+                                  </tr>
+                                ))
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                        
+                        {/* Legend */}
+                        <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                          <h4 className="text-xs font-medium text-gray-700 mb-1">Legend:</h4>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="inline-block w-3 h-3 rounded-full bg-green-50 mr-1"></span>
+                              <span className="text-gray-600">Top 2 qualify for next round</span>
+                            </div>
+                            <div>
+                              <span className="inline-block w-3 h-3 rounded-full bg-blue-50 mr-1"></span>
+                              <span className="text-gray-600">Your team's position</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">This team is not currently participating in any tournaments.</p>
+                    )}
                   </div>
                 </div>
 

@@ -1,0 +1,493 @@
+BEGIN;
+
+
+CREATE TABLE IF NOT EXISTS public.card
+(
+    id serial NOT NULL,
+    color character varying(10) COLLATE pg_catalog."default",
+    minute integer,
+    player_id integer,
+    match_no integer,
+    CONSTRAINT card_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.goal_details
+(
+    goal_id numeric NOT NULL DEFAULT nextval('goal_details_goal_id_seq'::regclass),
+    match_no numeric NOT NULL,
+    player_id numeric NOT NULL,
+    team_id numeric NOT NULL,
+    goal_time numeric NOT NULL,
+    goal_type character(1) COLLATE pg_catalog."default" NOT NULL,
+    play_stage character(1) COLLATE pg_catalog."default" NOT NULL,
+    goal_schedule character(2) COLLATE pg_catalog."default" NOT NULL,
+    goal_half numeric,
+    CONSTRAINT goal_details_pkey PRIMARY KEY (goal_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.match_captain
+(
+    match_no numeric NOT NULL,
+    team_id numeric NOT NULL,
+    player_captain numeric NOT NULL,
+    CONSTRAINT match_captain_pkey PRIMARY KEY (match_no, team_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.match_details
+(
+    match_no numeric NOT NULL,
+    team_id numeric NOT NULL,
+    win_lose character(1) COLLATE pg_catalog."default" NOT NULL,
+    decided_by character(1) COLLATE pg_catalog."default" NOT NULL,
+    goal_score numeric NOT NULL,
+    penalty_score numeric,
+    player_gk numeric NOT NULL,
+    CONSTRAINT match_details_pkey PRIMARY KEY (match_no, team_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.match_played
+(
+    match_no numeric NOT NULL,
+    play_stage character(1) COLLATE pg_catalog."default" NOT NULL,
+    play_date date NOT NULL,
+    team_id1 numeric NOT NULL,
+    team_id2 numeric NOT NULL,
+    results character(5) COLLATE pg_catalog."default" NOT NULL,
+    decided_by character(1) COLLATE pg_catalog."default" NOT NULL,
+    goal_score character(5) COLLATE pg_catalog."default" NOT NULL,
+    venue_id numeric NOT NULL,
+    audience numeric NOT NULL,
+    player_of_match numeric NOT NULL,
+    stop1_sec numeric NOT NULL,
+    stop2_sec numeric NOT NULL,
+    CONSTRAINT match_played_pkey PRIMARY KEY (match_no)
+);
+
+CREATE TABLE IF NOT EXISTS public.match_support
+(
+    match_no numeric NOT NULL,
+    support_id numeric NOT NULL,
+    support_type character(2) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT match_support_pkey PRIMARY KEY (match_no, support_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.penalty_gk
+(
+    match_no numeric NOT NULL,
+    team_id numeric NOT NULL,
+    player_gk numeric NOT NULL,
+    CONSTRAINT penalty_gk_pkey PRIMARY KEY (match_no, team_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.penalty_shootout
+(
+    kick_id numeric NOT NULL,
+    match_no numeric NOT NULL,
+    team_id numeric NOT NULL,
+    player_id numeric NOT NULL,
+    score_goal character(1) COLLATE pg_catalog."default" NOT NULL,
+    kick_no numeric NOT NULL,
+    CONSTRAINT penalty_shootout_pkey PRIMARY KEY (kick_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.player
+(
+    player_id numeric NOT NULL,
+    jersey_no numeric NOT NULL,
+    position_to_play character(2) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT player_pkey PRIMARY KEY (player_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.player_booked
+(
+    match_no numeric NOT NULL,
+    team_id numeric NOT NULL,
+    player_id numeric NOT NULL,
+    booking_time numeric NOT NULL,
+    sent_off character(1) COLLATE pg_catalog."default",
+    play_schedule character(2) COLLATE pg_catalog."default" NOT NULL,
+    play_half numeric NOT NULL,
+    CONSTRAINT player_booked_pkey PRIMARY KEY (match_no, team_id, player_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.player_in_out
+(
+    match_no numeric NOT NULL,
+    team_id numeric NOT NULL,
+    player_id numeric NOT NULL,
+    in_out character(1) COLLATE pg_catalog."default" NOT NULL,
+    time_in_out numeric NOT NULL,
+    play_schedule character(2) COLLATE pg_catalog."default" NOT NULL,
+    play_half numeric NOT NULL,
+    CONSTRAINT player_in_out_pkey PRIMARY KEY (match_no, team_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.playing_position
+(
+    position_id character(2) COLLATE pg_catalog."default" NOT NULL,
+    position_desc character varying(15) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT playing_position_pkey PRIMARY KEY (position_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.support
+(
+    support_type character(2) COLLATE pg_catalog."default" NOT NULL,
+    support_desc character varying(15) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT support_pkey PRIMARY KEY (support_type)
+);
+
+CREATE TABLE IF NOT EXISTS public.team
+(
+    team_id numeric NOT NULL,
+    team_name character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    status character varying(255) COLLATE pg_catalog."default" DEFAULT 'active'::character varying,
+    CONSTRAINT team_pkey PRIMARY KEY (team_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.team_player
+(
+    player_id numeric NOT NULL,
+    team_id numeric NOT NULL,
+    tr_id numeric NOT NULL,
+    CONSTRAINT team_player_pkey PRIMARY KEY (player_id, team_id, tr_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.team_support
+(
+    support_id numeric NOT NULL,
+    team_id numeric NOT NULL,
+    tr_id numeric NOT NULL,
+    support_type character(2) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT team_support_pkey PRIMARY KEY (support_id, team_id, tr_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.tournament
+(
+    tr_id numeric NOT NULL,
+    tr_name character varying(40) COLLATE pg_catalog."default" NOT NULL,
+    start_date date NOT NULL,
+    end_date date NOT NULL,
+    status character varying(55) COLLATE pg_catalog."default" DEFAULT 'upcoming'::character varying,
+    CONSTRAINT tournament_pkey PRIMARY KEY (tr_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.tournament_team
+(
+    team_id numeric NOT NULL,
+    tr_id numeric NOT NULL,
+    team_group character(1) COLLATE pg_catalog."default" NULL,
+    match_played numeric NOT NULL,
+    won numeric NOT NULL,
+    draw numeric NOT NULL,
+    lost numeric NOT NULL,
+    goal_for numeric NOT NULL,
+    goal_against numeric NOT NULL,
+    goal_diff numeric NOT NULL,
+    points numeric NOT NULL,
+    group_position numeric NULL,
+    CONSTRAINT tournament_team_pkey PRIMARY KEY (team_id, tr_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.users
+(
+    id numeric NOT NULL,
+    first_name character varying(40) COLLATE pg_catalog."default" NOT NULL,
+    last_name character varying(255) COLLATE pg_catalog."default",
+    email character varying(255) COLLATE pg_catalog."default",
+    password character varying(255) COLLATE pg_catalog."default",
+    date_of_birth date,
+    user_type character varying(50) COLLATE pg_catalog."default" DEFAULT 'guest'::character varying,
+    CONSTRAINT person_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.venue
+(
+    venue_id numeric NOT NULL,
+    venue_name character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    venue_status character(1) COLLATE pg_catalog."default" NOT NULL,
+    venue_capacity numeric NOT NULL,
+    CONSTRAINT venue_pkey PRIMARY KEY (venue_id)
+);
+
+ALTER TABLE IF EXISTS public.card
+    ADD CONSTRAINT card_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+
+ALTER TABLE IF EXISTS public.card
+    ADD CONSTRAINT card_player_id_fkey FOREIGN KEY (player_id)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+
+ALTER TABLE IF EXISTS public.goal_details
+    ADD CONSTRAINT goal_details_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.goal_details
+    ADD CONSTRAINT goal_details_player_id_fkey FOREIGN KEY (player_id)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.goal_details
+    ADD CONSTRAINT goal_details_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_captain
+    ADD CONSTRAINT match_captain_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_captain
+    ADD CONSTRAINT match_captain_player_captain_fkey FOREIGN KEY (player_captain)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_captain
+    ADD CONSTRAINT match_captain_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_details
+    ADD CONSTRAINT match_details_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_details
+    ADD CONSTRAINT match_details_player_gk_fkey FOREIGN KEY (player_gk)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_details
+    ADD CONSTRAINT match_details_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_played
+    ADD CONSTRAINT match_played_player_of_match_fkey FOREIGN KEY (player_of_match)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_played
+    ADD CONSTRAINT match_played_team_id1_fkey FOREIGN KEY (team_id1)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_played
+    ADD CONSTRAINT match_played_team_id2_fkey FOREIGN KEY (team_id2)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_played
+    ADD CONSTRAINT match_played_venue_id_fkey FOREIGN KEY (venue_id)
+    REFERENCES public.venue (venue_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_support
+    ADD CONSTRAINT match_support_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.match_support
+    ADD CONSTRAINT match_support_support_id_fkey FOREIGN KEY (support_id)
+    REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.penalty_gk
+    ADD CONSTRAINT penalty_gk_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.penalty_gk
+    ADD CONSTRAINT penalty_gk_player_gk_fkey FOREIGN KEY (player_gk)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.penalty_gk
+    ADD CONSTRAINT penalty_gk_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.penalty_shootout
+    ADD CONSTRAINT penalty_shootout_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.penalty_shootout
+    ADD CONSTRAINT penalty_shootout_player_id_fkey FOREIGN KEY (player_id)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.penalty_shootout
+    ADD CONSTRAINT penalty_shootout_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.player
+    ADD CONSTRAINT player_player_id_fkey FOREIGN KEY (player_id)
+    REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+CREATE INDEX IF NOT EXISTS player_pkey
+    ON public.player(player_id);
+
+
+ALTER TABLE IF EXISTS public.player
+    ADD CONSTRAINT player_position_to_play_fkey FOREIGN KEY (position_to_play)
+    REFERENCES public.playing_position (position_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.player_booked
+    ADD CONSTRAINT player_booked_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.player_booked
+    ADD CONSTRAINT player_booked_player_id_fkey FOREIGN KEY (player_id)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.player_booked
+    ADD CONSTRAINT player_booked_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.player_in_out
+    ADD CONSTRAINT player_in_out_match_no_fkey FOREIGN KEY (match_no)
+    REFERENCES public.match_played (match_no) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.player_in_out
+    ADD CONSTRAINT player_in_out_player_id_fkey FOREIGN KEY (player_id)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.player_in_out
+    ADD CONSTRAINT player_in_out_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.team_player
+    ADD CONSTRAINT team_player_player_id_fkey FOREIGN KEY (player_id)
+    REFERENCES public.player (player_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.team_player
+    ADD CONSTRAINT team_player_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.team_player
+    ADD CONSTRAINT team_player_tr_id_fkey FOREIGN KEY (tr_id)
+    REFERENCES public.tournament (tr_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.team_support
+    ADD CONSTRAINT team_support_support_id_fkey FOREIGN KEY (support_id)
+    REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.team_support
+    ADD CONSTRAINT team_support_support_type_fkey FOREIGN KEY (support_type)
+    REFERENCES public.support (support_type) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.team_support
+    ADD CONSTRAINT team_support_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.team_support
+    ADD CONSTRAINT team_support_tr_id_fkey FOREIGN KEY (tr_id)
+    REFERENCES public.tournament (tr_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.tournament_team
+    ADD CONSTRAINT tournament_team_team_id_fkey FOREIGN KEY (team_id)
+    REFERENCES public.team (team_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.tournament_team
+    ADD CONSTRAINT tournament_team_tr_id_fkey FOREIGN KEY (tr_id)
+    REFERENCES public.tournament (tr_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+END;

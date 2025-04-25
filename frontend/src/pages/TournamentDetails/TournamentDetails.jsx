@@ -13,40 +13,552 @@ const TournamentDetails = () => {
     end_date: id === '1' ? '2023-03-25' : id === '2' ? '2023-03-30' : '2022-12-25',
   };
 
-  // Teams in this tournament
+  // Dummy data for teams in this tournament (unified league format)
   const teams = [
-    { team_id: 1214, tr_id: 1, team_name: 'CCM', team_group: 'A', match_played: 3, won: 0, draw: 3, lost: 0, goal_for: 4, goal_against: 4, goal_diff: 0, points: 3, group_position: 1 },
-    { team_id: 1215, tr_id: 1, team_name: 'KBS', team_group: 'B', match_played: 3, won: 1, draw: 1, lost: 1, goal_for: 3, goal_against: 4, goal_diff: -1, points: 4, group_position: 2 },
-    { team_id: 1216, tr_id: 2, team_name: 'CEP', team_group: 'C', match_played: 3, won: 1, draw: 1, lost: 1, goal_for: 0, goal_against: 0, goal_diff: 0, points: 4, group_position: 2 },
-    { team_id: 1217, tr_id: 2, team_name: 'CPG', team_group: 'A', match_played: 3, won: 1, draw: 1, lost: 1, goal_for: 1, goal_against: 4, goal_diff: -3, points: 4, group_position: 1 },
-    { team_id: 1218, tr_id: 3, team_name: 'CCM', team_group: 'A', match_played: 3, won: 1, draw: 1, lost: 1, goal_for: 2, goal_against: 4, goal_diff: -2, points: 4, group_position: 3 },
+    { team_id: 1214, tr_id: 1, team_name: 'CCM', match_played: 7, won: 6, draw: 1, lost: 0, goal_for: 19, goal_against: 6, goal_diff: 13, points: 19 },
+    { team_id: 1216, tr_id: 1, team_name: 'CEP', match_played: 7, won: 5, draw: 1, lost: 1, goal_for: 15, goal_against: 7, goal_diff: 8, points: 16 },
+    { team_id: 1215, tr_id: 1, team_name: 'KBS', match_played: 7, won: 4, draw: 2, lost: 1, goal_for: 11, goal_against: 8, goal_diff: 3, points: 14 },
+    { team_id: 1218, tr_id: 1, team_name: 'CIE', match_played: 7, won: 4, draw: 0, lost: 3, goal_for: 12, goal_against: 10, goal_diff: 2, points: 12 },
+    { team_id: 1219, tr_id: 1, team_name: 'MGE', match_played: 7, won: 3, draw: 1, lost: 3, goal_for: 10, goal_against: 9, goal_diff: 1, points: 10 },
+    { team_id: 1220, tr_id: 1, team_name: 'CHE', match_played: 7, won: 2, draw: 3, lost: 2, goal_for: 8, goal_against: 9, goal_diff: -1, points: 9 },
+    { team_id: 1221, tr_id: 1, team_name: 'ARC', match_played: 7, won: 2, draw: 2, lost: 3, goal_for: 7, goal_against: 9, goal_diff: -2, points: 8 },
+    { team_id: 1217, tr_id: 1, team_name: 'CPG', match_played: 7, won: 1, draw: 2, lost: 4, goal_for: 5, goal_against: 12, goal_diff: -7, points: 5 },
+    { team_id: 1222, tr_id: 1, team_name: 'COE', match_played: 7, won: 0, draw: 2, lost: 5, goal_for: 4, goal_against: 14, goal_diff: -10, points: 2 },
+    { team_id: 1223, tr_id: 1, team_name: 'ICS', match_played: 7, won: 0, draw: 0, lost: 7, goal_for: 3, goal_against: 10, goal_diff: -7, points: 0 },
   ];
 
-  // Matches in this tournament
+  // Matches in this tournament - mix of played and upcoming matches that match the standings statistics
   const matches = [
+    // Week 1 Matches
     {
       match_no: 1,
       play_stage: 'G',
-      play_date: '2023-03-11',
+      play_date: '2023-03-01',
       team_id1: 1214,
-      team_id2: 1215,
+      team_id2: 1223,
       team_name1: 'CCM',
-      team_name2: 'KBS',
+      team_name2: 'ICS',
+      status: 'completed',
       results: 'WIN',
-      goal_score: '2-1',
+      goal_score: '3-0',
       venue_id: 11,
       venue_name: 'Main Stadium'
     },
     {
       match_no: 2,
       play_stage: 'G',
-      play_date: '2023-03-11',
+      play_date: '2023-03-01',
+      team_id1: 1216,
+      team_id2: 1222,
+      team_name1: 'CEP',
+      team_name2: 'COE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    {
+      match_no: 3,
+      play_stage: 'G',
+      play_date: '2023-03-02',
       team_id1: 1215,
-      team_id2: 1216,
+      team_id2: 1220,
       team_name1: 'KBS',
-      team_name2: 'CEP',
+      team_name2: 'CHE',
+      status: 'completed',
       results: 'DRAW',
       goal_score: '1-1',
+      venue_id: 33,
+      venue_name: 'Jabal Field'
+    },
+    {
+      match_no: 4,
+      play_stage: 'G',
+      play_date: '2023-03-02',
+      team_id1: 1218,
+      team_id2: 1221,
+      team_name1: 'CIE',
+      team_name2: 'ARC',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-0',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 5,
+      play_stage: 'G',
+      play_date: '2023-03-03',
+      team_id1: 1219,
+      team_id2: 1217,
+      team_name1: 'MGE',
+      team_name2: 'CPG',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    
+    // Week 2 Matches
+    {
+      match_no: 6,
+      play_stage: 'G',
+      play_date: '2023-03-05',
+      team_id1: 1214,
+      team_id2: 1222,
+      team_name1: 'CCM',
+      team_name2: 'COE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '4-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 7,
+      play_stage: 'G',
+      play_date: '2023-03-05',
+      team_id1: 1216,
+      team_id2: 1220,
+      team_name1: 'CEP',
+      team_name2: 'CHE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    {
+      match_no: 8,
+      play_stage: 'G',
+      play_date: '2023-03-06',
+      team_id1: 1215,
+      team_id2: 1217,
+      team_name1: 'KBS',
+      team_name2: 'CPG',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-0',
+      venue_id: 33,
+      venue_name: 'Jabal Field'
+    },
+    {
+      match_no: 9,
+      play_stage: 'G',
+      play_date: '2023-03-06',
+      team_id1: 1218,
+      team_id2: 1219,
+      team_name1: 'CIE',
+      team_name2: 'MGE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-2',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 10,
+      play_stage: 'G',
+      play_date: '2023-03-07',
+      team_id1: 1221,
+      team_id2: 1223,
+      team_name1: 'ARC',
+      team_name2: 'ICS',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-0',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    
+    // Week 3 Matches
+    {
+      match_no: 11,
+      play_stage: 'G',
+      play_date: '2023-03-10',
+      team_id1: 1214,
+      team_id2: 1217,
+      team_name1: 'CCM',
+      team_name2: 'CPG',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 12,
+      play_stage: 'G',
+      play_date: '2023-03-10',
+      team_id1: 1216,
+      team_id2: 1221,
+      team_name1: 'CEP',
+      team_name2: 'ARC',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    {
+      match_no: 13,
+      play_stage: 'G',
+      play_date: '2023-03-11',
+      team_id1: 1215,
+      team_id2: 1219,
+      team_name1: 'KBS',
+      team_name2: 'MGE',
+      status: 'completed',
+      results: 'DRAW',
+      goal_score: '2-2',
+      venue_id: 33,
+      venue_name: 'Jabal Field'
+    },
+    {
+      match_no: 14,
+      play_stage: 'G',
+      play_date: '2023-03-11',
+      team_id1: 1218,
+      team_id2: 1220,
+      team_name1: 'CIE',
+      team_name2: 'CHE',
+      status: 'completed',
+      results: 'LOSS',
+      goal_score: '1-2',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 15,
+      play_stage: 'G',
+      play_date: '2023-03-12',
+      team_id1: 1222,
+      team_id2: 1223,
+      team_name1: 'COE',
+      team_name2: 'ICS',
+      status: 'completed',
+      results: 'DRAW',
+      goal_score: '1-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    
+    // Week 4 Matches
+    {
+      match_no: 16,
+      play_stage: 'G',
+      play_date: '2023-03-14',
+      team_id1: 1214,
+      team_id2: 1218,
+      team_name1: 'CCM',
+      team_name2: 'CIE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 17,
+      play_stage: 'G',
+      play_date: '2023-03-14',
+      team_id1: 1216,
+      team_id2: 1215,
+      team_name1: 'CEP',
+      team_name2: 'KBS',
+      status: 'completed',
+      results: 'LOSS',
+      goal_score: '1-2',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    {
+      match_no: 18,
+      play_stage: 'G',
+      play_date: '2023-03-15',
+      team_id1: 1220,
+      team_id2: 1219,
+      team_name1: 'CHE',
+      team_name2: 'MGE',
+      status: 'completed',
+      results: 'DRAW',
+      goal_score: '2-2',
+      venue_id: 33,
+      venue_name: 'Jabal Field'
+    },
+    {
+      match_no: 19,
+      play_stage: 'G',
+      play_date: '2023-03-15',
+      team_id1: 1221,
+      team_id2: 1222,
+      team_name1: 'ARC',
+      team_name2: 'COE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 20,
+      play_stage: 'G',
+      play_date: '2023-03-16',
+      team_id1: 1217,
+      team_id2: 1223,
+      team_name1: 'CPG',
+      team_name2: 'ICS',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-0',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    
+    // Week 5 Matches (Some played, some scheduled)
+    {
+      match_no: 21,
+      play_stage: 'G',
+      play_date: '2023-03-19',
+      team_id1: 1214,
+      team_id2: 1215,
+      team_name1: 'CCM',
+      team_name2: 'KBS',
+      status: 'completed',
+      results: 'DRAW',
+      goal_score: '2-2',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 22,
+      play_stage: 'G',
+      play_date: '2023-03-19',
+      team_id1: 1216,
+      team_id2: 1217,
+      team_name1: 'CEP',
+      team_name2: 'CPG',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-0',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    {
+      match_no: 23,
+      play_stage: 'G',
+      play_date: '2023-03-20',
+      team_id1: 1218,
+      team_id2: 1223,
+      team_name1: 'CIE',
+      team_name2: 'ICS',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-1',
+      venue_id: 33,
+      venue_name: 'Jabal Field'
+    },
+    {
+      match_no: 24,
+      play_stage: 'G',
+      play_date: '2023-03-20',
+      team_id1: 1219,
+      team_id2: 1222,
+      team_name1: 'MGE',
+      team_name2: 'COE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-0',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 25,
+      play_stage: 'G',
+      play_date: '2023-03-21',
+      team_id1: 1220,
+      team_id2: 1221,
+      team_name1: 'CHE',
+      team_name2: 'ARC',
+      status: 'completed',
+      results: 'DRAW',
+      goal_score: '1-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    
+    // Week 6 Matches
+    {
+      match_no: 26,
+      play_stage: 'G',
+      play_date: '2023-03-23',
+      team_id1: 1214,
+      team_id2: 1219,
+      team_name1: 'CCM',
+      team_name2: 'MGE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 27,
+      play_stage: 'G',
+      play_date: '2023-03-23',
+      team_id1: 1216,
+      team_id2: 1218,
+      team_name1: 'CEP',
+      team_name2: 'CIE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    {
+      match_no: 28,
+      play_stage: 'G',
+      play_date: '2023-03-24',
+      team_id1: 1215,
+      team_id2: 1221,
+      team_name1: 'KBS',
+      team_name2: 'ARC',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '3-1',
+      venue_id: 33,
+      venue_name: 'Jabal Field'
+    },
+    {
+      match_no: 29,
+      play_stage: 'G',
+      play_date: '2023-03-24',
+      team_id1: 1220,
+      team_id2: 1222,
+      team_name1: 'CHE',
+      team_name2: 'COE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 30,
+      play_stage: 'G',
+      play_date: '2023-03-25',
+      team_id1: 1217,
+      team_id2: 1223,
+      team_name1: 'CPG',
+      team_name2: 'ICS',
+      status: 'completed',
+      results: 'DRAW',
+      goal_score: '1-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    
+    // Week 7 Matches
+    {
+      match_no: 31,
+      play_stage: 'G',
+      play_date: '2023-03-27',
+      team_id1: 1214,
+      team_id2: 1220,
+      team_name1: 'CCM',
+      team_name2: 'CHE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 32,
+      play_stage: 'G',
+      play_date: '2023-03-27',
+      team_id1: 1215,
+      team_id2: 1218,
+      team_name1: 'KBS',
+      team_name2: 'CIE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    {
+      match_no: 33,
+      play_stage: 'G',
+      play_date: '2023-03-28',
+      team_id1: 1216,
+      team_id2: 1219,
+      team_name1: 'CEP',
+      team_name2: 'MGE',
+      status: 'completed',
+      results: 'WIN',
+      goal_score: '2-1',
+      venue_id: 33,
+      venue_name: 'Jabal Field'
+    },
+    {
+      match_no: 34,
+      play_stage: 'G',
+      play_date: '2023-03-28',
+      team_id1: 1217,
+      team_id2: 1221,
+      team_name1: 'CPG',
+      team_name2: 'ARC',
+      status: 'completed',
+      results: 'LOSS',
+      goal_score: '1-2',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 35,
+      play_stage: 'G',
+      play_date: '2023-03-29',
+      team_id1: 1222,
+      team_id2: 1223,
+      team_name1: 'COE',
+      team_name2: 'ICS',
+      status: 'completed',
+      results: 'DRAW',
+      goal_score: '1-1',
+      venue_id: 22,
+      venue_name: 'Indoor Stadium'
+    },
+    
+    // Upcoming Matches for playoffs/final stages
+    {
+      match_no: 36,
+      play_stage: 'Q',
+      play_date: '2023-04-02',
+      team_id1: 1214,
+      team_id2: 1218,
+      team_name1: 'CCM',
+      team_name2: 'CIE',
+      status: 'scheduled',
+      results: '',
+      goal_score: '-',
+      venue_id: 11,
+      venue_name: 'Main Stadium'
+    },
+    {
+      match_no: 37,
+      play_stage: 'Q',
+      play_date: '2023-04-02',
+      team_id1: 1216,
+      team_id2: 1215,
+      team_name1: 'CEP',
+      team_name2: 'KBS',
+      status: 'scheduled',
+      results: '',
+      goal_score: '-',
       venue_id: 22,
       venue_name: 'Indoor Stadium'
     }
@@ -177,55 +689,87 @@ const TournamentDetails = () => {
               </div>
             </div>
 
-            {/* Standings */}
+            {/* Standings - Combined League Table */}
             <div className="mb-10">
-              <h2 className="text-2xl font-bold mb-6">Standings</h2>
-              {groups.map(group => (
-                <div key={group} className="mb-8">
-                  <h3 className="text-xl font-semibold mb-4">Group {group}</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pos</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">MP</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">W</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">D</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">L</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GF</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GA</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GD</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">PTS</th>
+              <h2 className="text-2xl font-bold mb-6">Tournament Standings</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pos</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">MP</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">W</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">D</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">L</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GF</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GA</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GD</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">PTS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {/* Sort all teams by points (descending), then goal difference, then goals for */}
+                    {tournamentTeams
+                      .sort((a, b) => {
+                        if (a.points !== b.points) return b.points - a.points; // Higher points first
+                        if (a.goal_diff !== b.goal_diff) return b.goal_diff - a.goal_diff; // Higher goal diff first
+                        return b.goal_for - a.goal_for; // Higher goals for first
+                      })
+                      .map((team, index) => (
+                        <tr key={team.team_id} className={index < 2 ? "bg-green-50 hover:bg-green-100" : "hover:bg-gray-50"}>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <Link to={`/teams/${team.team_id}`} className="font-medium hover:text-blue-600">
+                              {team.team_name}
+                            </Link>
+                          </td>
+
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{team.match_played}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{team.won}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{team.draw}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{team.lost}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_for}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_against}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_diff}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">{team.points}</td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {tournamentTeams
-                          .filter(team => team.team_group === group)
-                          .sort((a, b) => a.group_position - b.group_position)
-                          .map((team) => (
-                            <tr key={team.team_id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{team.group_position}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                <Link to={`/teams/${team.team_id}`} className="hover:text-blue-600">
-                                  {team.team_name}
-                                </Link>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{team.match_played}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{team.won}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{team.draw}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{team.lost}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_for}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_against}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_diff}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-center">{team.points}</td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
+                      ))
+                    }
+                  </tbody>
+                </table>
+                
+                {/* Add legend below table */}
+                <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Legend:</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <span className="inline-block w-4 h-4 rounded-full bg-green-50 mr-1"></span>
+                      <span className="text-gray-600">Top 2 qualify for next round</span>
+                    </div>
+                    <div>
+                      <span>MP:</span>
+                      <span className="text-gray-600 ml-1">Matches Played</span>
+                    </div>
+                    <div>
+                      <span>W/D/L:</span>
+                      <span className="text-gray-600 ml-1">Win/Draw/Loss</span>
+                    </div>
+                    <div>
+                      <span>GF/GA:</span>
+                      <span className="text-gray-600 ml-1">Goals For/Against</span>
+                    </div>
+                    <div>
+                      <span>GD:</span>
+                      <span className="text-gray-600 ml-1">Goal Difference</span>
+                    </div>
+                    <div>
+                      <span>PTS:</span>
+                      <span className="text-gray-600 ml-1">Points</span>
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         )}

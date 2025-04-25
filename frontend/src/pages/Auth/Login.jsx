@@ -27,8 +27,8 @@ function Login() {
       localStorage.setItem('userRole', isAdmin ? 'admin' : 'user');
       localStorage.setItem('isAuthenticated', 'true');
       
-      // Redirect based on role
-      navigate(isAdmin ? '/admin/tournaments' : '/guest/results/1');
+      // Redirect to home page after successful login
+      navigate('/home');
     } catch (err) {
       setError('Invalid credentials. Please try again.');
     }
