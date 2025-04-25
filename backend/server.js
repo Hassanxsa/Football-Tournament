@@ -32,10 +32,22 @@ app.use(passport.session());
 // signup route
 
 app.post('/signup', async (req, res) => {
-  const {id, first_name, last_name, email, password, user_type} = req.body;
+  const {first_name, last_name, email, password} = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Extract KFUPM ID from email (e.g., "s202272000@kfupm.edu.sa")
+  const match = email.match(/^s(\d{9})@kfupm\.edu\.sa$/);
+  if (!match) {
+    return res.status(400).json({ message: 'Invalid KFUPM email format' });
+  }
+  const kfupmId = parseInt(match[1]); // This will be 202272000
+
+
   try {
-    await query('INSERT INTO users (id, first_name, last_name, email, password, user_type) VALUES ($1, $2, $3, $4, $5, $6)', [id, first_name, last_name, email, hashedPassword, user_type]);
+    await query(
+      'INSERT INTO users (id, first_name, last_name, email, password, user_type) VALUES ($1, $2, $3, $4, $5, $6)',
+      [kfupmId, first_name, last_name, email, hashedPassword, 'guest']
+    );
     res.json({ message: 'User created successfully' });
   } catch (err) {
     console.error(err);
