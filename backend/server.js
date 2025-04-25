@@ -102,7 +102,7 @@ const checkAdmin = (req, res, next) => {
     });
 };
 
-/////////////////////////////////////////////main pages routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//main pages routes (view tournaments, teams, players, venues, home)
 
 // tournaments route
 
@@ -416,117 +416,6 @@ app.get(
       });
     } catch (err) {
       console.error('Error fetching home data:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-);
-
-///////////////////////////////////////////// specific id routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-
-// player by id route
-app.get(
-  '/players/:id',
-  passport.authenticate('jwt', { session: false }),
-  async (req, res) => {
-    const playerId = Number(req.params.id);
-    if (Number.isNaN(playerId)) {
-      return res.status(400).json({ error: 'Invalid player id' });
-    }
-
-    try {
-      // 1) Basic info + teams + position + age
-      const infoSql = `
-        SELECT
-          u.first_name,
-          u.last_name,
-          u.id               AS player_id,
-          p.jersey_no,
-          u.date_of_birth,
-          EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.date_of_birth))::INT AS age,
-          pos.position_desc  AS position,
-          COALESCE(
-            ARRAY_AGG(DISTINCT t.team_name)
-            FILTER (WHERE t.team_name IS NOT NULL),
-            '{}'
-          ) AS teams
-        FROM public.player       AS p
-        JOIN public.users        AS u ON p.player_id = u.id
-        JOIN public.playing_position AS pos
-          ON p.position_to_play = pos.position_id
-        LEFT JOIN public.team_player AS tp
-          ON tp.player_id = p.player_id
-        LEFT JOIN public.team        AS t
-          ON t.team_id = tp.team_id
-        WHERE u.id = $1
-        GROUP BY u.first_name, u.last_name, u.id, p.jersey_no, u.date_of_birth, pos.position_desc
-      `;
-
-      // 2) Recent 5 matches for any team this player has been on
-      const recentSql = `
-        SELECT
-          m.match_no,
-          m.play_stage,
-          m.play_date,
-          t1.team_name AS team1,
-          t2.team_name AS team2,
-          v.venue_name AS venue,
-          m.results
-        FROM public.match_played AS m
-        JOIN public.team AS t1 ON m.team_id1 = t1.team_id
-        JOIN public.team AS t2 ON m.team_id2 = t2.team_id
-        JOIN public.venue AS v  ON m.venue_id  = v.venue_id
-        WHERE m.team_id1 IN (SELECT team_id FROM public.team_player WHERE player_id = $1)
-           OR m.team_id2 IN (SELECT team_id FROM public.team_player WHERE player_id = $1)
-        ORDER BY m.play_date DESC
-        LIMIT 5
-      `;
-
-      // 3) Aggregate stats in one shot
-      const statsSql = `
-        SELECT
-          /* goals scored */
-          (SELECT COUNT(*) FROM public.goal_details WHERE player_id = $1) AS num_goals,
-
-          /* placeholder  replace with your assists table if you add one */
-          0 AS num_assists,
-
-          /* distinct matches played */
-          (SELECT COUNT(DISTINCT m.match_no)
-           FROM public.match_played AS m
-           WHERE m.team_id1 IN (SELECT team_id FROM public.team_player WHERE player_id = $1)
-              OR m.team_id2 IN (SELECT team_id FROM public.team_player WHERE player_id = $1)
-          ) AS matches_played,
-
-          /* yellow / red cards from the new card table */
-          (SELECT COUNT(*) FROM public.card WHERE player_id = $1 AND color = 'yellow') AS num_yellow_cards,
-          (SELECT COUNT(*) FROM public.card WHERE player_id = $1 AND color = 'red')    AS num_red_cards
-      `;
-
-      // run in parallel
-      const [
-        { rows: infoRows },
-        { rows: recentRows },
-        { rows: statsRows }
-      ] = await Promise.all([
-        query(infoSql,    [playerId]),
-        query(recentSql,  [playerId]),
-        query(statsSql,   [playerId])
-      ]);
-
-      if (infoRows.length === 0) {
-        return res.status(404).json({ error: 'Player not found' });
-      }
-
-      const profile = {
-        ...infoRows[0],
-        recentMatches: recentRows,
-        ...statsRows[0]
-      };
-
-      return res.json(profile);
-
-    } catch (err) {
-      console.error('Error in GET /players/:id', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
