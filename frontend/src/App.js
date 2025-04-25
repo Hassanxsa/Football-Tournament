@@ -18,6 +18,12 @@ import Players from './pages/Players/Players';
 import PlayerDetails from './pages/PlayerDetails/PlayerDetails';
 import Venues from './pages/Venues/Venues';
 
+// Admin Pages
+import AdminDashboard from './pages/Admin/Dashboard';
+import AdminTournaments from './pages/Admin/Tournaments';
+import AdminTeams from './pages/Admin/Teams';
+import AdminPlayers from './pages/Admin/Players';
+
 function App() {
   return (
     <Router>
@@ -54,7 +60,10 @@ function App() {
                 <Route path="venues" element={<Venues />} />
                 
                 {/* Admin Routes */}
-                <Route path="admin/tournaments" element={<Home />} />
+                <Route path="admin" element={<AdminDashboard />} />
+                <Route path="admin/tournaments" element={<AdminTournaments />} />
+                <Route path="admin/teams" element={<AdminTeams />} />
+                <Route path="admin/players" element={<AdminPlayers />} />
               </Routes>
             </Layout>
           </PrivateRoute>
