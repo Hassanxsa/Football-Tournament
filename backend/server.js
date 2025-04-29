@@ -31,7 +31,7 @@ app.use(passport.session());
 
 // signup route
 
-app.post('/signup', async (req, res) => {
+app.post('/api/signup', async (req, res) => {
   const {first_name, last_name, email, password} = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -59,7 +59,7 @@ app.post('/signup', async (req, res) => {
 
 // login route
 
-app.post('/login', (req, res) => {
+app.post('/api/login', (req, res) => {
   passport.authenticate('local', { session: false }, (err, user, info) => {
     if (err || !user) {
       return res.status(400).json({
@@ -107,7 +107,7 @@ const checkAdmin = (req, res, next) => {
 // tournaments route
 
 app.get(
-  '/tournaments',
+  '/api/tournaments',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
     const sql = `
@@ -159,7 +159,7 @@ app.get(
 // teams route
 
 app.get(
-  '/teams',
+  '/api/teams',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
     // Grab the optional search term
@@ -232,7 +232,7 @@ app.get(
 
 // players route
 app.get(
-  '/players',
+  '/api/players',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
     const { search, position } = req.query;
@@ -297,7 +297,7 @@ app.get(
 // venues route
 
 app.get(
-  '/venues',
+  '/api/venues',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
     const { search, status } = req.query;
@@ -351,7 +351,7 @@ app.get(
 
 // home route
 app.get(
-  '/home',
+  '/api/home',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
     try {
@@ -426,7 +426,7 @@ app.get(
 
 /////////////////////// tournament routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 app.get(
-  '/admin/tournaments',
+  '/api/admin/tournaments',
   passport.authenticate('jwt', { session: false }),  // ensure user is logged in
   checkAdmin,                                        // ensure user is an admin
   async (req, res) => {
@@ -452,7 +452,7 @@ app.get(
 
 // Create a new tournament
 app.post(
-  '/tournaments',
+  '/api/tournaments',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
@@ -498,7 +498,7 @@ app.post(
 
 // update a tournament
 app.put(
-  '/admin/tournaments/:id',
+  '/api/admin/tournaments/:id',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
@@ -536,7 +536,7 @@ app.put(
 );
 // delete a tournament
 app.delete(
-  '/admin/tournaments/:id',
+  '/api/admin/tournaments/:id',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
@@ -557,7 +557,7 @@ app.delete(
 );
 /////////////////////////  team routes \\\\\\\\\\\\\\\\\\\\\\\\\\
 app.get(
-  '/admin/teams',
+  '/api/admin/teams',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
@@ -641,7 +641,7 @@ app.get(
 
 // Create a new team
 app.post(
-  '/admin/teams',
+  '/api/admin/teams',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
@@ -685,7 +685,7 @@ app.post(
 
 // update a team
 app.put(
-  '/admin/teams/:id',
+  '/api/admin/teams/:id',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
@@ -708,7 +708,7 @@ app.put(
 );
 // delete a team
 app.delete(
-  '/admin/teams/:id',
+  '/api/admin/teams/:id',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
