@@ -780,15 +780,14 @@ app.post(
 );
 // assign a captain to a team
 app.post(
-  '/api/admin/teams/:id/captain',
+  '/api/admin/teams/assign-captain',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
-    const { id } = req.params; // team_id
-    const { player_id } = req.body;
+    const { team_id, player_id } = req.body;
 
-    if (!player_id) {
-      return res.status(400).json({ error: 'player_id is required' });
+    if (!team_id || !player_id) {
+      return res.status(400).json({ error: 'team_id and player_id are required' });
     }
 
     const sql = `
@@ -799,7 +798,7 @@ app.post(
     `;
 
     try {
-      const { rows } = await query(sql, [player_id, id]);
+      const { rows } = await query(sql, [player_id, team_id]);
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Team not found' });
@@ -812,6 +811,7 @@ app.post(
     }
   }
 );
+
 
 
 
