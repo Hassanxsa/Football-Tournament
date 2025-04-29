@@ -421,7 +421,538 @@ app.get(
   }
 );
 
-//
+///////////////////////////////////////// Admin routes /////////////////////////////////////////
+// admin tournament route
+
+/////////////////////// tournament routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+app.get(
+  '/admin/tournaments',
+  passport.authenticate('jwt', { session: false }),  // ensure user is logged in
+  checkAdmin,                                        // ensure user is an admin
+  async (req, res) => {
+    try {
+      // Fetch all tournaments (or filter to “current” as needed)
+      const sql = `
+        SELECT
+          tr_id,
+          tr_name,
+          start_date,
+          end_date
+        FROM public.tournament
+        ORDER BY tr_id;
+      `;
+      const { rows } = await query(sql);
+      return res.json(rows);
+    } catch (err) {
+      console.error('Error fetching admin tournaments:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// Create a new tournament
+app.post(
+  '/tournaments',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { tr_name, start_date, end_date } = req.body;
+
+    if (!tr_name || !start_date || !end_date) {
+      return res
+        .status(400)
+        .json({ error: 'tr_name, start_date and end_date are required' });
+    }
+
+    try {
+      // 1) Get the current max tr_id
+      const maxResult = await query(
+        'SELECT COALESCE(MAX(tr_id), 0) AS max_id FROM public.tournament'
+      );
+      const maxId = parseInt(maxResult.rows[0].max_id, 10);
+      const nextId = maxId + 1;
+
+      // 2) Insert the new tournament with that tr_id
+      const insertSql = `
+        INSERT INTO public.tournament (tr_id, tr_name, start_date, end_date)
+        VALUES ($1, $2, $3, $4)
+        RETURNING tr_id, tr_name, start_date, end_date;
+      `;
+      const { rows } = await query(insertSql, [
+        nextId,
+        tr_name,
+        start_date,
+        end_date,
+      ]);
+
+      return res.status(201).json(rows[0]);
+    } catch (err) {
+      console.error('Error creating tournament:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
+
+// update a tournament
+app.put(
+  '/admin/tournaments/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const { name, start_date, end_date, status } = req.body;
+
+    // basic validation
+    if (!name || !start_date || !end_date || !status) {
+      return res
+        .status(400)
+        .json({ error: 'name, start_date, end_date and status are required' });
+    }
+
+    const sql = `
+      UPDATE public.tournament
+      SET
+        tr_name    = $1,
+        start_date = $2,
+        end_date   = $3,
+        status     = $4
+      WHERE tr_id = $5;
+    `;
+
+    try {
+      const result = await query(sql, [name, start_date, end_date, status, id]);
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Tournament not found' });
+      }
+      return res.json({ message: 'Tournament updated successfully' });
+    } catch (err) {
+      console.error('Error updating tournament:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+// delete a tournament
+app.delete(
+  '/admin/tournaments/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const sql = `
+      DELETE FROM public.tournament
+      WHERE tr_id = $1;
+    `;
+
+    try {
+      await query(sql, [id]);
+      return res.json({ message: 'Tournament deleted successfully' });
+    } catch (err) {
+      console.error('Error deleting tournament:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+/////////////////////////  team routes \\\\\\\\\\\\\\\\\\\\\\\\\\
+app.get(
+  '/admin/teams',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    try {
+      // 1) Teams with captain, player count, and tournaments
+      const teamsSql = `
+        SELECT
+          t.team_id,
+          t.team_name,
+
+          -- most recent match captain for this team
+          cap.player_captain AS captain_id,
+          (u.first_name || ' ' || u.last_name) AS captain_name,
+
+          -- how many players this team has
+          COALESCE(tp_counts.num_players, 0) AS num_players,
+
+          -- array of tournament names this team participates in
+          COALESCE(tr.tournaments, '{}') AS tournaments
+        FROM public.team AS t
+
+        /* captain: pick the player_captain from the latest match_captain row */
+        LEFT JOIN LATERAL (
+          SELECT player_captain
+          FROM public.match_captain mc
+          WHERE mc.team_id = t.team_id
+          ORDER BY mc.match_no DESC
+          LIMIT 1
+        ) AS cap ON true
+
+        /* join to users for captain’s name */
+        LEFT JOIN public.player     AS cap_p ON cap.player_captain = cap_p.player_id
+        LEFT JOIN public.users      AS u     ON cap_p.player_id   = u.id
+
+        /* count distinct players on each team */
+        LEFT JOIN (
+          SELECT team_id, COUNT(DISTINCT player_id) AS num_players
+          FROM public.team_player
+          GROUP BY team_id
+        ) AS tp_counts
+          ON tp_counts.team_id = t.team_id
+
+        /* aggregate tournament names into an array */
+        LEFT JOIN (
+          SELECT 
+            tt.team_id,
+            ARRAY_AGG(tr.tr_name ORDER BY tr.tr_name) AS tournaments
+          FROM public.tournament_team tt
+          JOIN public.tournament    tr ON tt.tr_id = tr.tr_id
+          GROUP BY tt.team_id
+        ) AS tr
+          ON tr.team_id = t.team_id
+
+        ORDER BY t.team_name;
+      `;
+
+      // 2) All tournaments for the dropdown/display
+      const allTourSql = `
+        SELECT tr_id, tr_name, start_date, end_date, status
+        FROM public.tournament
+        ORDER BY tr_id;
+      `;
+
+      const [
+        { rows: teams },
+        { rows: tournaments }
+      ] = await Promise.all([
+        query(teamsSql),
+        query(allTourSql)
+      ]);
+
+      return res.json({ teams, tournaments });
+
+    } catch (err) {
+      console.error('Error fetching admin teams:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+// Create a new team
+app.post(
+  '/admin/teams',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { team_name } = req.body;
+
+    // Basic validation
+    if (!team_name) {
+      return res
+        .status(400)
+        .json({ error: 'team_name is required' });
+    }
+
+    try {
+      // 1) Fetch current max team_id (numeric comes back as string)
+      const maxRes = await query(
+        'SELECT COALESCE(MAX(team_id), 0) AS max_id FROM public.team'
+      );
+      const maxId  = parseInt(maxRes.rows[0].max_id, 10);
+      const nextId = maxId + 1;
+
+      // 2) Insert the new team
+      const insertSql = `
+        INSERT INTO public.team (team_id, team_name)
+        VALUES ($1, $2)
+        RETURNING team_id, team_name;
+      `;
+      const { rows } = await query(insertSql, [
+        nextId,
+        team_name
+      ]);
+
+      // 3) Respond with the newly created team
+      return res.status(201).json(rows[0]);
+    } catch (err) {
+      console.error('Error creating team:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+// update a team
+app.put(
+  '/admin/teams/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const { name, status } = req.body;
+    const sql = `
+      UPDATE public.team
+      SET team_name = $1, status = $2
+      WHERE team_id = $3;
+    `;
+
+    try {
+      await query(sql, [name, status, id]);
+      return res.json({ message: 'Team updated successfully' });
+    } catch (err) {
+      console.error('Error updating team:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+// delete a team
+app.delete(
+  '/admin/teams/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const sql = `
+      DELETE FROM public.team
+      WHERE team_id = $1;
+    `;
+
+    try {
+      await query(sql, [id]);
+      return res.json({ message: 'Team deleted successfully' });
+    } catch (err) {
+      console.error('Error deleting team:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// add team to tournament
+app.post(
+  '/api/admin/teams/add-to-tournament',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { team_id, tr_id } = req.body;
+
+    // 1) validate inputs
+    if (!team_id || !tr_id) {
+      return res
+        .status(400)
+        .json({ error: 'team_id and tr_id are required' });
+    }
+
+    try {
+      // 2) prevent duplicates
+      const { rows: existing } = await query(
+        `SELECT 1
+           FROM public.tournament_team
+          WHERE team_id = $1
+            AND tr_id   = $2`,
+        [team_id, tr_id]
+      );
+      if (existing.length) {
+        return res
+          .status(409)
+          .json({ error: 'That team is already in this tournament' });
+      }
+
+      // 3) insert with default stats = 0
+      const insertSql = `
+      INSERT INTO public.tournament_team (team_id, tr_id)
+      VALUES ($1, $2)
+      RETURNING team_id, tr_id;
+      `;
+      const { rows } = await query(insertSql, [
+        team_id,
+        tr_id,
+      ]);
+
+      // 4) respond with the new link
+      return res.status(201).json(rows[0]);
+
+    } catch (err) {
+      console.error('Error adding team to tournament:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+// assign a captain to a team
+app.post(
+  '/api/admin/teams/:id/captain',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params; // team_id
+    const { player_id } = req.body;
+
+    if (!player_id) {
+      return res.status(400).json({ error: 'player_id is required' });
+    }
+
+    const sql = `
+      UPDATE public.team
+      SET captain = $1
+      WHERE team_id = $2
+      RETURNING team_id, captain;
+    `;
+
+    try {
+      const { rows } = await query(sql, [player_id, id]);
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+
+      return res.json({ message: 'Captain assigned successfully', data: rows[0] });
+    } catch (err) {
+      console.error('Error assigning captain:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
+
+
+
+//////////// player routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+// Create a new player
+app.post(
+  '/admin/players',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { first_name, last_name, date_of_birth, position_to_play } = req.body;
+    const sql = `
+      INSERT INTO public.player (first_name, last_name, date_of_birth, position_to_play)
+      VALUES ($1, $2, $3, $4)
+      RETURNING player_id;
+    `;
+
+    try {
+      const { rows } = await query(sql, [first_name, last_name, date_of_birth, position_to_play]);
+      return res.json({ id: rows[0].player_id });
+    } catch (err) {
+      console.error('Error creating player:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+// update a player
+app.put(
+  '/admin/players/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const { first_name, last_name, date_of_birth, position_to_play } = req.body;
+    const sql = `
+      UPDATE public.player
+      SET first_name = $1, last_name = $2, date_of_birth = $3, position_to_play = $4
+      WHERE player_id = $5;
+    `;
+
+    try {
+      await query(sql, [first_name, last_name, date_of_birth, position_to_play, id]);
+      return res.json({ message: 'Player updated successfully' });
+    } catch (err) {
+      console.error('Error updating player:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+// delete a player
+app.delete(
+  '/admin/players/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const sql = `
+      DELETE FROM public.player
+      WHERE player_id = $1;
+    `;
+
+    try {
+      await query(sql, [id]);
+      return res.json({ message: 'Player deleted successfully' });
+    } catch (err) {
+      console.error('Error deleting player:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+////////////////////// User management routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+// Get all users (admin only)
+app.get(
+  '/admin/users',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const sql = `
+      SELECT id, first_name, last_name, email, user_type
+      FROM public.users;
+    `;
+
+    try {
+      const { rows } = await query(sql);
+      return res.json(rows);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+// Update user type (admin only)
+app.put(
+  '/admin/users/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const { user_type } = req.body;
+    const sql = `
+      UPDATE public.users
+      SET user_type = $1
+      WHERE id = $2;
+    `;
+
+    try {
+      await query(sql, [user_type, id]);
+      return res.json({ message: 'User type updated successfully' });
+    } catch (err) {
+      console.error('Error updating user type:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+// Delete a user (admin only)
+app.delete(
+  '/admin/users/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { id } = req.params;
+    const sql = `
+      DELETE FROM public.users
+      WHERE id = $1;
+    `;
+
+    try {
+      await query(sql, [id]);
+      return res.json({ message: 'User deleted successfully' });
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
 
 
 
