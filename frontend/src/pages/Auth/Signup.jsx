@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { authService } from '../../services/api';
 
 function Signup() {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -22,21 +24,46 @@ function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     // Basic validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    // Email validation for KFUPM email
+    const emailPattern = /^s\d{9}@kfupm\.edu\.sa$/;
+    if (!emailPattern.test(formData.email)) {
+      setError('Please use a valid KFUPM email in the format s123456789@kfupm.edu.sa');
+      setLoading(false);
       return;
     }
 
     try {
-      // TODO: Implement actual registration logic here
-      // For now, just simulate a successful registration
-      localStorage.setItem('userRole', 'user');
-      localStorage.setItem('isAuthenticated', 'true');
-      navigate('/guest/results/1');
+      // Create a new user using the auth service
+      const signupData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        password: formData.password
+      };
+      
+      await authService.signup(signupData);
+      
+      // After successful registration, login the user
+      await authService.login(formData.email, formData.password);
+      
+      // Redirect to home page after successful registration and login
+      navigate('/home');
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      console.error('Registration error:', err);
+      setError(
+        err.response?.data?.message || 
+        'Registration failed. Please try again.'
+      );
+      setLoading(false);
     }
   };
 
@@ -58,29 +85,29 @@ function Signup() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="first_name" className="block text-sm font-medium text-gray-700">
                   First Name
                 </label>
                 <input
-                  id="firstName"
-                  name="firstName"
+                  id="first_name"
+                  name="first_name"
                   type="text"
                   required
-                  value={formData.firstName}
+                  value={formData.first_name}
                   onChange={handleChange}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="last_name" className="block text-sm font-medium text-gray-700">
                   Last Name
                 </label>
                 <input
-                  id="lastName"
-                  name="lastName"
+                  id="last_name"
+                  name="last_name"
                   type="text"
                   required
-                  value={formData.lastName}
+                  value={formData.last_name}
                   onChange={handleChange}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -140,9 +167,10 @@ function Signup() {
           <div>
             <button
               type="submit"
-              className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+              disabled={loading}
+              className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-70"
             >
-              Sign up
+              {loading ? 'Creating Account...' : 'Sign up'}
             </button>
           </div>
 

@@ -1,664 +1,348 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { teamService } from '../../services/api';
 
 const TeamDetails = () => {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState('overview');
+  const [team, setTeam] = useState(null);
+  const [players, setPlayers] = useState([]);
+  const [matches, setMatches] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchTeamDetails = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch team details
+        const teamData = await teamService.getTeamById(id);
+        setTeam(teamData);
+        
+        // Fetch players in this team
+        const playersData = await teamService.getTeamPlayers(id);
+        setPlayers(playersData);
+        
+        // Fetch matches for this team
+        const matchesData = await teamService.getTeamMatches(id);
+        setMatches(matchesData);
+        
+        // Fetch tournaments this team participates in
+        const tournamentsData = await teamService.getTeamTournaments(id);
+        setTournaments(tournamentsData);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching team details:', err);
+        setError('Failed to load team details');
+        setLoading(false);
+      }
+    };
 
-  // Dummy data based on the schema
-  const team = {
-    team_id: parseInt(id),
-    team_name: id === '1214' ? 'CCM' : id === '1215' ? 'KBS' : id === '1216' ? 'CEP' : 'CPG',
-  };
+    fetchTeamDetails();
+  }, [id]);
+  
+  // If loading or error, show appropriate UI
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="spinner-border text-blue-500" role="status">
+            <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <p className="mt-2 text-gray-600">Loading team details...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Players in this team
-  const players = [
-    { player_id: 1001, team_id: 1214, tr_id: 1, name: 'Ahmed', jersey_no: 1, position_to_play: 'GK', position_desc: 'Goalkeepers', date_of_birth: '1999-03-10' },
-    { player_id: 1003, team_id: 1214, tr_id: 1, name: 'Saeed', jersey_no: 2, position_to_play: 'DF', position_desc: 'Defenders', date_of_birth: '2005-03-10' },
-    { player_id: 1005, team_id: 1214, tr_id: 1, name: 'Majid', jersey_no: 3, position_to_play: 'DF', position_desc: 'Defenders', date_of_birth: '1996-03-10' },
-    { player_id: 1007, team_id: 1215, tr_id: 1, name: 'Ahmed', jersey_no: 4, position_to_play: 'MF', position_desc: 'Midfielders', date_of_birth: '2001-03-10' },
-    { player_id: 1009, team_id: 1216, tr_id: 1, name: 'Fahd', jersey_no: 5, position_to_play: 'FD', position_desc: 'Forwards', date_of_birth: '2008-03-10' },
-  ];
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Error Loading Data</h2>
+          <p className="text-gray-600">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  // Tournament teams for unified league format
-  const tournamentTeams = [
-    // Tournament 1 - KFUPM Faculty League
-    { team_id: 1214, tr_id: 1, team_name: 'CCM', match_played: 7, won: 6, draw: 1, lost: 0, goal_for: 19, goal_against: 6, goal_diff: 13, points: 19 },
-    { team_id: 1216, tr_id: 1, team_name: 'CEP', match_played: 7, won: 5, draw: 1, lost: 1, goal_for: 15, goal_against: 7, goal_diff: 8, points: 16 },
-    { team_id: 1215, tr_id: 1, team_name: 'KBS', match_played: 7, won: 4, draw: 2, lost: 1, goal_for: 11, goal_against: 8, goal_diff: 3, points: 14 },
-    { team_id: 1218, tr_id: 1, team_name: 'CIE', match_played: 7, won: 4, draw: 0, lost: 3, goal_for: 12, goal_against: 10, goal_diff: 2, points: 12 },
-    { team_id: 1219, tr_id: 1, team_name: 'MGE', match_played: 7, won: 3, draw: 1, lost: 3, goal_for: 10, goal_against: 9, goal_diff: 1, points: 10 },
-    { team_id: 1220, tr_id: 1, team_name: 'CHE', match_played: 7, won: 2, draw: 3, lost: 2, goal_for: 8, goal_against: 9, goal_diff: -1, points: 9 },
-    { team_id: 1221, tr_id: 1, team_name: 'ARC', match_played: 7, won: 2, draw: 2, lost: 3, goal_for: 7, goal_against: 9, goal_diff: -2, points: 8 },
-    { team_id: 1217, tr_id: 1, team_name: 'CPG', match_played: 7, won: 1, draw: 2, lost: 4, goal_for: 5, goal_against: 12, goal_diff: -7, points: 5 },
-    { team_id: 1222, tr_id: 1, team_name: 'COE', match_played: 7, won: 0, draw: 2, lost: 5, goal_for: 4, goal_against: 14, goal_diff: -10, points: 2 },
-    { team_id: 1223, tr_id: 1, team_name: 'ICS', match_played: 7, won: 0, draw: 0, lost: 7, goal_for: 3, goal_against: 10, goal_diff: -7, points: 0 },
-    
-    // Tournament 2 - KFUPM Student League
-    { team_id: 1214, tr_id: 2, team_name: 'CCM', match_played: 5, won: 4, draw: 1, lost: 0, goal_for: 12, goal_against: 3, goal_diff: 9, points: 13 },
-    { team_id: 1224, tr_id: 2, team_name: 'PHY', match_played: 5, won: 3, draw: 1, lost: 1, goal_for: 10, goal_against: 5, goal_diff: 5, points: 10 },
-    { team_id: 1225, tr_id: 2, team_name: 'LAS', match_played: 5, won: 3, draw: 0, lost: 2, goal_for: 8, goal_against: 7, goal_diff: 1, points: 9 },
-    { team_id: 1217, tr_id: 2, team_name: 'CPG', match_played: 5, won: 2, draw: 2, lost: 1, goal_for: 7, goal_against: 5, goal_diff: 2, points: 8 },
-    { team_id: 1226, tr_id: 2, team_name: 'EED', match_played: 5, won: 2, draw: 1, lost: 2, goal_for: 6, goal_against: 8, goal_diff: -2, points: 7 },
-    { team_id: 1215, tr_id: 2, team_name: 'KBS', match_played: 5, won: 1, draw: 2, lost: 2, goal_for: 5, goal_against: 6, goal_diff: -1, points: 5 },
-    { team_id: 1227, tr_id: 2, team_name: 'ACC', match_played: 5, won: 1, draw: 0, lost: 4, goal_for: 3, goal_against: 10, goal_diff: -7, points: 3 },
-    { team_id: 1228, tr_id: 2, team_name: 'BIO', match_played: 5, won: 0, draw: 1, lost: 4, goal_for: 2, goal_against: 9, goal_diff: -7, points: 1 }
-  ];
+  if (!team) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-yellow-500 mb-4">
+            <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Team Not Found</h2>
+          <p className="text-gray-600">The team you are looking for does not exist or has been removed.</p>
+          <Link 
+            to="/teams" 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-block"
+          >
+            View All Teams
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  // Matches involving this team - mix of played and upcoming that match the standings statistics
-  const matches = [
-    // Week 1 Matches
-    {
-      match_no: 1,
-      play_stage: 'G',
-      play_date: '2023-03-01',
-      team_id1: 1214,
-      team_id2: 1223,
-      team_name1: 'CCM',
-      team_name2: 'ICS',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '3-0',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 1,
-      tournament_name: 'Faculty Tournament'
-    },
-    {
-      match_no: 6,
-      play_stage: 'G',
-      play_date: '2023-03-05',
-      team_id1: 1214,
-      team_id2: 1222,
-      team_name1: 'CCM',
-      team_name2: 'COE',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '4-1',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 1,
-      tournament_name: 'Faculty Tournament'
-    },
-    {
-      match_no: 11,
-      play_stage: 'G',
-      play_date: '2023-03-10',
-      team_id1: 1214,
-      team_id2: 1217,
-      team_name1: 'CCM',
-      team_name2: 'CPG',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '3-1',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 1,
-      tournament_name: 'Faculty Tournament'
-    },
-    {
-      match_no: 16,
-      play_stage: 'G',
-      play_date: '2023-03-14',
-      team_id1: 1214,
-      team_id2: 1218,
-      team_name1: 'CCM',
-      team_name2: 'CIE',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '2-1',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 1,
-      tournament_name: 'Faculty Tournament'
-    },
-    {
-      match_no: 21,
-      play_stage: 'G',
-      play_date: '2023-03-19',
-      team_id1: 1214,
-      team_id2: 1215,
-      team_name1: 'CCM',
-      team_name2: 'KBS',
-      status: 'completed',
-      results: 'DRAW',
-      goal_score: '2-2',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 1,
-      tournament_name: 'Faculty Tournament'
-    },
-    {
-      match_no: 26,
-      play_stage: 'G',
-      play_date: '2023-03-23',
-      team_id1: 1214,
-      team_id2: 1219,
-      team_name1: 'CCM',
-      team_name2: 'MGE',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '3-1',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 1,
-      tournament_name: 'Faculty Tournament'
-    },
-    {
-      match_no: 31,
-      play_stage: 'G',
-      play_date: '2023-03-27',
-      team_id1: 1214,
-      team_id2: 1220,
-      team_name1: 'CCM',
-      team_name2: 'CHE',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '2-1',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 1,
-      tournament_name: 'Faculty Tournament'
-    },
-    // Upcoming Matches
-    {
-      match_no: 36,
-      play_stage: 'Q',
-      play_date: '2023-04-02',
-      team_id1: 1214,
-      team_id2: 1218,
-      team_name1: 'CCM',
-      team_name2: 'CIE',
-      status: 'scheduled',
-      results: '',
-      goal_score: '-',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 1,
-      tournament_name: 'Faculty Tournament'
-    },
-    // Student League matches
-    {
-      match_no: 101,
-      play_stage: 'G',
-      play_date: '2023-02-15',
-      team_id1: 1214,
-      team_id2: 1227,
-      team_name1: 'CCM',
-      team_name2: 'ACC',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '3-0',
-      venue_id: 22,
-      venue_name: 'Indoor Stadium',
-      tr_id: 2,
-      tournament_name: 'Student Tournament'
-    },
-    {
-      match_no: 105,
-      play_stage: 'G',
-      play_date: '2023-02-22',
-      team_id1: 1214,
-      team_id2: 1225,
-      team_name1: 'CCM',
-      team_name2: 'LAS',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '2-1',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 2,
-      tournament_name: 'Student Tournament'
-    },
-    {
-      match_no: 110,
-      play_stage: 'G',
-      play_date: '2023-03-01',
-      team_id1: 1214,
-      team_id2: 1226,
-      team_name1: 'CCM',
-      team_name2: 'EED',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '2-0',
-      venue_id: 33,
-      venue_name: 'Jabal Field',
-      tr_id: 2,
-      tournament_name: 'Student Tournament'
-    },
-    {
-      match_no: 115,
-      play_stage: 'G',
-      play_date: '2023-03-08',
-      team_id1: 1214,
-      team_id2: 1215,
-      team_name1: 'CCM',
-      team_name2: 'KBS',
-      status: 'completed',
-      results: 'WIN',
-      goal_score: '3-2',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 2,
-      tournament_name: 'Student Tournament'
-    },
-    {
-      match_no: 120,
-      play_stage: 'G',
-      play_date: '2023-03-15',
-      team_id1: 1224,
-      team_id2: 1214,
-      team_name1: 'PHY',
-      team_name2: 'CCM',
-      status: 'completed',
-      results: 'DRAW',
-      goal_score: '2-2',
-      venue_id: 22,
-      venue_name: 'Indoor Stadium',
-      tr_id: 2,
-      tournament_name: 'Student Tournament'
-    },
-    {
-      match_no: 125,
-      play_stage: 'S',
-      play_date: '2023-04-05',
-      team_id1: 1214,
-      team_id2: 1224,
-      team_name1: 'CCM',
-      team_name2: 'PHY',
-      status: 'scheduled',
-      results: '',
-      goal_score: '-',
-      venue_id: 11,
-      venue_name: 'Main Stadium',
-      tr_id: 2,
-      tournament_name: 'Student Tournament'
+  // Group players by position
+  const playersByPosition = players.reduce((acc, player) => {
+    const position = player.position_desc || 'Unknown';
+    if (!acc[position]) {
+      acc[position] = [];
     }
-  ];
-
-  // Filter team data
-  const teamPlayers = players.filter(player => player.team_id === parseInt(id));
-  const teamTournaments = tournamentTeams.filter(tt => tt.team_id === parseInt(id));
-  const teamMatches = matches.filter(match => match.team_id1 === parseInt(id) || match.team_id2 === parseInt(id));
-
-  const getStageLabel = (stage) => {
-    switch (stage) {
-      case 'G': return 'Group Stage';
-      case 'R': return 'Round of 16';
-      case 'Q': return 'Quarter Final';
-      case 'S': return 'Semi Final';
-      case 'F': return 'Final';
-      default: return stage;
-    }
-  };
-
-  // Team support staff
-  const teamStaff = [
-    { support_id: 9001, team_id: 1214, tr_id: 1, support_type: 'CH', support_desc: 'COACH', name: 'Carlos' },
-    { support_id: 7001, team_id: 1214, tr_id: 1, support_type: 'AC', support_desc: 'ASST COACH', name: 'Hassan' },
-  ];
-
-  const teamSupport = teamStaff.filter(staff => staff.team_id === parseInt(id));
+    acc[position].push(player);
+    return acc;
+  }, {});
+  
+  // Sort positions in logical order: GK, DF, MF, FD
+  const positionOrder = { 'Goalkeepers': 1, 'Defenders': 2, 'Midfielders': 3, 'Forwards': 4 };
+  const sortedPositions = Object.keys(playersByPosition).sort((a, b) => {
+    return (positionOrder[a] || 99) - (positionOrder[b] || 99);
+  });
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-green-700 px-6 py-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-white">{team.team_name}</h1>
-              <p className="text-green-100">Team Details</p>
-            </div>
-            <div className="mt-4 md:mt-0">
-              <Link to="/teams" className="text-green-100 hover:text-white flex items-center">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to Teams
-              </Link>
-            </div>
+    <div className="min-h-screen">
+      {/* Back Navigation */}
+      <div className="bg-blue-700 text-white p-4">
+        <div className="max-w-7xl mx-auto flex items-center">
+          <Link to="/teams" className="flex items-center text-white hover:text-blue-200">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Teams
+          </Link>
+        </div>
+      </div>
+      
+      {/* Team Header */}
+      <div className="bg-blue-800 text-white py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <h1 className="text-3xl font-bold mb-2">{team.team_name}</h1>
+          {team.team_group && (
+            <p className="text-blue-200">Group {team.team_group}</p>
+          )}
+        </div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Team Tabs */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button 
+                onClick={() => setActiveTab('overview')}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                Overview
+              </button>
+              <button 
+                onClick={() => setActiveTab('players')}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'players' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                Players
+              </button>
+              <button 
+                onClick={() => setActiveTab('matches')}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'matches' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                Matches
+              </button>
+            </nav>
           </div>
         </div>
         
-        {/* Tab Navigation */}
-        <div className="flex border-b">
-          <button
-            className={`px-4 py-2 font-medium text-sm focus:outline-none ${
-              activeTab === 'overview'
-                ? 'border-b-2 border-green-500 text-green-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('overview')}
-          >
-            Overview
-          </button>
-          <button
-            className={`px-4 py-2 font-medium text-sm focus:outline-none ${
-              activeTab === 'players'
-                ? 'border-b-2 border-green-500 text-green-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('players')}
-          >
-            Players
-          </button>
-          <button
-            className={`px-4 py-2 font-medium text-sm focus:outline-none ${
-              activeTab === 'matches'
-                ? 'border-b-2 border-green-500 text-green-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('matches')}
-          >
-            Matches
-          </button>
-        </div>
-        
-        {/* Tab Content */}
-        <div className="p-6">
-          {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                {/* Team Information */}
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                  <div className="px-4 py-5 sm:px-6 bg-gray-50">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Team Information</h3>
+        {activeTab === 'overview' && (
+          <div>
+            {/* Team Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Team Details</h3>
+                <dl>
+                  <div className="py-2 grid grid-cols-3 gap-4">
+                    <dt className="text-sm font-medium text-gray-500">Name:</dt>
+                    <dd className="text-sm text-gray-900 col-span-2">{team.team_name}</dd>
                   </div>
-                  <div className="border-t border-gray-200">
-                    <dl>
-                      <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Team Name</dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{team.team_name}</dd>
-                      </div>
-                      <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Team ID</dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{team.team_id}</dd>
-                      </div>
-                      <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Coach</dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          {teamSupport.find(staff => staff.support_type === 'CH')?.name || 'N/A'}
-                        </dd>
-                      </div>
-                      <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Number of Players</dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{teamPlayers.length}</dd>
-                      </div>
-                    </dl>
+                  {team.team_group && (
+                    <div className="py-2 grid grid-cols-3 gap-4">
+                      <dt className="text-sm font-medium text-gray-500">Group:</dt>
+                      <dd className="text-sm text-gray-900 col-span-2">{team.team_group}</dd>
+                    </div>
+                  )}
+                  <div className="py-2 grid grid-cols-3 gap-4">
+                    <dt className="text-sm font-medium text-gray-500">Players:</dt>
+                    <dd className="text-sm text-gray-900 col-span-2">{players.length}</dd>
                   </div>
-                </div>
+                  <div className="py-2 grid grid-cols-3 gap-4">
+                    <dt className="text-sm font-medium text-gray-500">Tournaments:</dt>
+                    <dd className="text-sm text-gray-900 col-span-2">{tournaments.length}</dd>
+                  </div>
+                </dl>
+              </div>
               
-                {/* Team Stats Preview */}
-                <div className="mt-6 bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-4 py-5 sm:px-6 bg-gray-50">
-                    <h3 className="text-lg font-medium leading-6 text-gray-900">Team Statistics</h3>
-                  </div>
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <div className="text-xs text-gray-500">Players</div>
-                        <div className="text-2xl font-bold text-blue-600">{teamPlayers.length}</div>
-                      </div>
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <div className="text-xs text-gray-500">Matches</div>
-                        <div className="text-2xl font-bold text-blue-600">{teamMatches.length}</div>
-                      </div>
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <div className="text-xs text-gray-500">Win Rate</div>
-                        <div className="text-2xl font-bold text-blue-600">65%</div>
-                      </div>
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <div className="text-xs text-gray-500">Goals</div>
-                        <div className="text-2xl font-bold text-blue-600">15</div>
-                      </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Recent Matches</h3>
+                {matches.slice(0, 3).map((match, index) => (
+                  <div key={match.match_no || index} className="mb-3 border-b border-gray-200 pb-3 last:border-0 last:pb-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">{match.team_name1}</span>
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        {match.status === 'completed' ? match.goal_score : 'vs'}
+                      </span>
+                      <span className="text-sm font-medium">{match.team_name2}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{new Date(match.play_date).toLocaleDateString()}</span>
+                      <span>{match.venue_name}</span>
                     </div>
                   </div>
+                ))}
+                <div className="mt-4">
+                  <button 
+                    onClick={() => setActiveTab('matches')}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    View all matches →
+                  </button>
                 </div>
               </div>
-
-              {/* Recent Players & Matches Preview */}
-              <div className="lg:col-span-2">
-                {/* Players Preview */}
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                  <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-gray-50">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Key Players</h3>
-                    <button 
-                      onClick={() => setActiveTab('players')} 
-                      className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      View All Players
-                    </button>
-                  </div>
-                  <div className="border-t border-gray-200">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Position
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Jersey No.
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {teamPlayers.slice(0, 5).map(player => (
-                            <tr key={player.player_id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <Link to={`/players/${player.player_id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                                  {player.name}
-                                </Link>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {player.position_desc}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {player.jersey_no}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+              
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Top Players</h3>
+                {players.slice(0, 5).map((player, index) => (
+                  <div key={player.player_id || index} className="mb-3 flex items-center border-b border-gray-200 pb-3 last:border-0 last:pb-0">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                      <span className="text-sm font-medium">{player.jersey_no || index + 1}</span>
                     </div>
-                  </div>
-                </div>
-
-                {/* Tournament Standings Section */}
-                <div className="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
-                  <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-gray-50">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Tournament Standings</h3>
-                    {teamTournaments.length > 0 && (
-                      <Link to={`/tournaments/${teamTournaments[0].tr_id}`} className="text-sm text-blue-600 hover:text-blue-800">
-                        View Tournament
+                    <div>
+                      <Link 
+                        to={`/players/${player.player_id}`}
+                        className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                      >
+                        {player.name}
                       </Link>
-                    )}
-                  </div>
-                  <div className="border-t border-gray-200 p-4">
-                    {teamTournaments.length > 0 ? (
-                      <div>
-                        {/* Tournament selector if team is in multiple tournaments */}
-                        {teamTournaments.length > 1 && (
-                          <div className="mb-4">
-                            <label htmlFor="tournament-select" className="block text-sm font-medium text-gray-700 mb-1">
-                              Select Tournament:
-                            </label>
-                            <select
-                              id="tournament-select"
-                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                            >
-                              {teamTournaments.map((tournament) => (
-                                <option key={tournament.tr_id} value={tournament.tr_id}>
-                                  Tournament #{tournament.tr_id}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                        
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pos</th>
-                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">MP</th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">W</th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">D</th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">L</th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GF</th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GA</th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">GD</th>
-                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">PTS</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                              {/* Get all teams from the current tournament (tr_id) and sort by points */}
-                              {tournamentTeams
-                                .filter(team => team.tr_id === teamTournaments[0]?.tr_id)
-                                .sort((a, b) => {
-                                  if (a.points !== b.points) return b.points - a.points; 
-                                  if (a.goal_diff !== b.goal_diff) return b.goal_diff - a.goal_diff;
-                                  return b.goal_for - a.goal_for;
-                                })
-                                .map((team, index) => (
-                                  <tr key={team.team_id} 
-                                      className={team.team_id === parseInt(id) ? 
-                                        "bg-blue-50 font-medium" : 
-                                        index < 2 ? "bg-green-50 hover:bg-green-100" : "hover:bg-gray-50"}>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                      <Link to={`/teams/${team.team_id}`} className="font-medium hover:text-blue-600">
-                                        {team.team_name}
-                                      </Link>
-                                      {team.team_id === parseInt(id) && (
-                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                          Your Team
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.match_played}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.won}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.draw}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.lost}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_for}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_against}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">{team.goal_diff}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 text-center">{team.points}</td>
-                                  </tr>
-                                ))
-                              }
-                            </tbody>
-                          </table>
-                        </div>
-                        
-                        {/* Legend */}
-                        <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                          <h4 className="text-xs font-medium text-gray-700 mb-1">Legend:</h4>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                              <span className="inline-block w-3 h-3 rounded-full bg-green-50 mr-1"></span>
-                              <span className="text-gray-600">Top 2 qualify for next round</span>
-                            </div>
-                            <div>
-                              <span className="inline-block w-3 h-3 rounded-full bg-blue-50 mr-1"></span>
-                              <span className="text-gray-600">Your team's position</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">This team is not currently participating in any tournaments.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Recent Matches Preview */}
-                <div className="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
-                  <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-gray-50">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Matches</h3>
-                    <button 
-                      onClick={() => setActiveTab('matches')} 
-                      className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      View All Matches
-                    </button>
-                  </div>
-                  <div className="border-t border-gray-200">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Date
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Match
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Result
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {teamMatches.slice(0, 3).map(match => (
-                            <tr key={match.match_no} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {new Date(match.play_date).toLocaleDateString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <span className="font-medium">{match.team_name1}</span>
-                                  <span className="mx-2 text-gray-400">vs</span>
-                                  <span className="font-medium">{match.team_name2}</span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <Link to={`/matches/${match.match_no}`} className="inline-flex items-center">
-                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 mr-2">
-                                    {match.goal_score}
-                                  </span>
-                                  <span className="text-sm text-blue-600 hover:text-blue-800">Details</span>
-                                </Link>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <p className="text-xs text-gray-500">
+                        {player.position_desc || 'Unknown position'} · {calculateAge(player.date_of_birth)} years
+                      </p>
                     </div>
                   </div>
+                ))}
+                <div className="mt-4">
+                  <button 
+                    onClick={() => setActiveTab('players')}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    View all players →
+                  </button>
                 </div>
               </div>
             </div>
-          )}
-
-          {activeTab === 'players' && (
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-gray-50">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Team Players</h3>
-                <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                  {teamPlayers.length} Players
-                </span>
+            
+            {/* Tournament Performance */}
+            <div className="bg-white rounded-lg shadow mb-8">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Tournament Performance</h3>
               </div>
-              <div className="border-t border-gray-200">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tournament
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        MP
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        W
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        D
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        L
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        GF
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        GA
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        GD
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Pts
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {tournaments.map((tournament, index) => (
+                      <tr key={tournament.tr_id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Link to={`/tournaments/${tournament.tr_id}`} className="text-sm font-medium text-gray-900 hover:text-blue-600">
+                            {tournament.tr_name}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.match_played || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.won || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.draw || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.lost || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.goal_for || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.goal_against || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.goal_diff || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">{tournament.points || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'players' && (
+          <div className="space-y-8">
+            {sortedPositions.map(position => (
+              <div key={position} className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
+                  <h3 className="text-lg font-medium text-gray-900">{position}</h3>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          #
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Name
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Age
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Position
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Jersey No.
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date of Birth
                         </th>
                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
@@ -666,25 +350,23 @@ const TeamDetails = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {teamPlayers.map(player => (
-                        <tr key={player.player_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Link to={`/players/${player.player_id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                              {player.name}
-                            </Link>
+                      {playersByPosition[position].map((player, index) => (
+                        <tr key={player.player_id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {player.jersey_no || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {player.name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {player.position_desc}
+                            {calculateAge(player.date_of_birth)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {player.jersey_no}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(player.date_of_birth).toLocaleDateString()}
+                            {player.position_to_play || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <Link to={`/players/${player.player_id}`} className="text-blue-600 hover:text-blue-900">
-                              View Profile
+                              View
                             </Link>
                           </td>
                         </tr>
@@ -693,92 +375,74 @@ const TeamDetails = () => {
                   </table>
                 </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'matches' && (
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              <div className="px-4 py-5 sm:px-6 bg-gray-50">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Team Matches</h3>
+            ))}
+          </div>
+        )}
+        
+        {activeTab === 'matches' && (
+          <div>
+            <div className="bg-white rounded-lg shadow mb-8">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Team Matches</h3>
               </div>
-              <div className="border-t border-gray-200">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Match
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tournament
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Result
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {teamMatches.map(match => {
-                        const isTeam1 = match.team_id1 === parseInt(id);
-                        const score = match.goal_score.split('-');
-                        const teamScore = isTeam1 ? score[0] : score[1];
-                        const opponentScore = isTeam1 ? score[1] : score[0];
-                        const opponent = isTeam1 ? match.team_name2 : match.team_name1;
-                        
-                        const result = 
-                          (isTeam1 && match.results === 'WIN') || (!isTeam1 && match.results === 'LOSS') 
-                            ? 'WIN' 
-                            : (isTeam1 && match.results === 'LOSS') || (!isTeam1 && match.results === 'WIN')
-                              ? 'LOSS'
-                              : 'DRAW';
-                        
-                        return (
-                          <tr key={match.match_no} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(match.play_date).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <span className="font-medium">{match.team_name1}</span>
-                                <span className="mx-2 text-gray-400">vs</span>
-                                <span className="font-medium">{match.team_name2}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {match.tournament_name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                {match.goal_score}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <Link 
-                                to={`/matches/${match.match_no}`} 
-                                className="text-blue-600 hover:text-blue-800"
-                              >
-                                Match Details
-                              </Link>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              
+              <div className="divide-y divide-gray-200">
+                {matches
+                  .sort((a, b) => new Date(a.play_date) - new Date(b.play_date))
+                  .map((match, index) => (
+                    <div key={match.match_no || index} className="p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="text-sm text-gray-500">
+                          {new Date(match.play_date).toLocaleDateString()} · {match.tr_name || 'Tournament'} · {match.venue_name}
+                        </div>
+                        <div className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          {match.status === 'completed' ? 'Completed' : 'Scheduled'}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1 text-right pr-4">
+                          <Link to={`/teams/${match.team_id1}`} className={`text-lg font-medium hover:text-blue-600 ${parseInt(id) === match.team_id1 ? 'font-bold' : ''}`}>
+                            {match.team_name1}
+                          </Link>
+                        </div>
+                        <div className="flex items-center justify-center px-4 py-2 bg-gray-100 rounded-lg">
+                          <span className="font-semibold text-xl">
+                            {match.status === 'completed' ? match.goal_score : 'vs'}
+                          </span>
+                        </div>
+                        <div className="flex-1 text-left pl-4">
+                          <Link to={`/teams/${match.team_id2}`} className={`text-lg font-medium hover:text-blue-600 ${parseInt(id) === match.team_id2 ? 'font-bold' : ''}`}>
+                            {match.team_name2}
+                          </Link>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-center">
+                        <Link to={`/matches/${match.match_no}`} className="text-sm text-blue-600 hover:text-blue-800">
+                          View match details
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
+};
+
+// Helper function to calculate age from birth date
+const calculateAge = (birthDate) => {
+  if (!birthDate) return '';
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
 };
 
 export default TeamDetails;

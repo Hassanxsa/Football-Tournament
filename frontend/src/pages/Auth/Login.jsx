@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { authService } from '../../services/api';
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -7,6 +8,7 @@ function Login() {
     password: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -19,18 +21,21 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      // TODO: Implement actual authentication logic here
-      // For now, just simulate a login
-      const isAdmin = formData.email.includes('admin');
-      localStorage.setItem('userRole', isAdmin ? 'admin' : 'user');
-      localStorage.setItem('isAuthenticated', 'true');
+      // Use the auth service to login
+      await authService.login(formData.email, formData.password);
       
       // Redirect to home page after successful login
       navigate('/home');
     } catch (err) {
-      setError('Invalid credentials. Please try again.');
+      console.error('Login error:', err);
+      setError(
+        err.response?.data?.message || 
+        'Failed to login. Please check your credentials and try again.'
+      );
+      setLoading(false);
     }
   };
 
@@ -95,9 +100,10 @@ function Login() {
           <div>
             <button
               type="submit"
-              className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+              disabled={loading}
+              className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-70"
             >
-              Sign in
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
 
