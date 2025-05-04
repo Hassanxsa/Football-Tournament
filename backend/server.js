@@ -812,6 +812,83 @@ app.post(
   }
 );
 
+//////////// Join a team route \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+// team request page 
+app.get(
+  '/api/teams/join-request',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    try {
+      // 1) Fetch all teams
+      const teamsQ = `
+        SELECT team_id, team_name
+        FROM public.team
+        ORDER BY team_name;
+      `;
+
+      // 2) Fetch all positions
+      const positionsQ = `
+        SELECT position_id, position_desc
+        FROM public.playing_position
+        ORDER BY position_desc;
+      `;
+
+      const [
+        { rows: teams },
+        { rows: positions }
+      ] = await Promise.all([
+        query(teamsQ),
+        query(positionsQ)
+      ]);
+
+      return res.json({ teams, positions });
+    } catch (err) {
+      console.error('Error fetching join-request metadata:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
+// Join a team request
+// This route allows a player to send a join request to a team
+app.post(
+  '/api/teams/join-request',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const player_id = req.user.id;           // from JWT
+    const { team_id, requested_position } = req.body;
+
+    if (!team_id || !requested_position) {
+      return res
+        .status(400)
+        .json({ error: 'team_id and requested_position are required' });
+    }
+
+    try {
+      const insertSql = `
+        INSERT INTO public.team_join_requests
+          (player_id, team_id, requested_position)
+        VALUES ($1, $2, $3)
+        RETURNING request_id, status;
+      `;
+      const { rows } = await query(insertSql, [
+        player_id,
+        team_id,
+        requested_position
+      ]);
+      return res.status(201).json(rows[0]);
+    } catch (err) {
+      console.error('Error creating join request:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
+
 
 
 
@@ -819,6 +896,126 @@ app.post(
 
 
 //////////// player routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+// Get player requests  (admin only - pending and accepted)
+app.get(
+  '/api/admin/players',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    try {
+      // 1) All teams for dropdown
+      const teamsSql = `
+        SELECT team_id, team_name
+        FROM public.team
+        ORDER BY team_name;
+      `;
+
+      // 2) Pending join‐requests
+      const pendingSql = `
+        SELECT
+          jr.request_id,
+          u.id    AS player_id,
+          u.first_name || ' ' || u.last_name AS player_name,
+          u.date_of_birth,
+          EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.date_of_birth))::INT AS age,
+          t.team_name,
+          p.jersey_no,
+          pos.position_desc AS position
+        FROM public.team_join_requests jr
+        JOIN public.users            u   ON jr.player_id = u.id
+        JOIN public.player           p   ON p.player_id = u.id
+        JOIN public.team             t   ON jr.team_id   = t.team_id
+        JOIN public.playing_position pos ON jr.requested_position = pos.position_id
+        WHERE jr.status = 'pending'
+        ORDER BY jr.created_at DESC;
+      `;
+
+      // 3) Approved requests as actual team members
+      const approvedSql = `
+        SELECT
+          jr.request_id,
+          u.id    AS player_id,
+          u.first_name || ' ' || u.last_name AS player_name,
+          u.date_of_birth,
+          EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.date_of_birth))::INT AS age,
+          t.team_name,
+          p.jersey_no,
+          pos.position_desc AS position,
+          CASE WHEN t.captain = u.id THEN 'captain' ELSE 'player' END AS role
+        FROM public.team_join_requests jr
+        JOIN public.users            u   ON jr.player_id = u.id
+        JOIN public.player           p   ON p.player_id = u.id
+        JOIN public.team             t   ON jr.team_id   = t.team_id
+        JOIN public.playing_position pos ON jr.requested_position = pos.position_id
+        WHERE jr.status = 'accepted'
+        ORDER BY jr.updated_at DESC;
+      `;
+
+      const [
+        { rows: teams },
+        { rows: pendingRequests },
+        { rows: approvedPlayers }
+      ] = await Promise.all([
+        query(teamsSql),
+        query(pendingSql),
+        query(approvedSql)
+      ]);
+
+      return res.json({ teams, pendingRequests, approvedPlayers });
+    } catch (err) {
+      console.error('Error fetching admin players page data:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// Approve or reject a join request (admin only)
+app.put(
+  '/api/admin/join-requests/:requestId',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { requestId } = req.params;
+    const { status }   = req.body;  // expected 'accepted' or 'rejected'
+
+    if (!['accepted','rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    try {
+      // 1) update the request’s status
+      const updSql = `
+        UPDATE public.team_join_requests
+        SET status = $1
+        WHERE request_id = $2
+        RETURNING player_id, team_id;
+      `;
+      const { rows } = await query(updSql, [status, requestId]);
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Request not found' });
+      }
+      const { player_id, team_id } = rows[0];
+
+      // 2) if accepted, add to roster
+      if (status === 'accepted') {
+        await query(
+          `INSERT INTO public.team_player (player_id, team_id, tr_id)
+           VALUES ($1, $2, /* provide a valid tr_id here */)`,
+          [player_id, team_id]
+        );
+      }
+
+      return res.json({ message: `Request ${status}` });
+    } catch (err) {
+      console.error('Error processing join request:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
+
 // Create a new player
 app.post(
   '/api/admin/players',
