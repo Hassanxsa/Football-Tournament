@@ -423,7 +423,7 @@ app.get(
 
 
 //////////////////////////// specific id routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-// Get a specific tournament by ID
+
 // 1) Tournament details
 app.get(
   '/api/tournaments/:id',
@@ -547,9 +547,164 @@ app.get(
   }
 );
 
+// 2) Team details
+// 1) GET /api/teams/:id
+//    Basic team info
+app.get(
+  '/api/teams/:id',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const teamId = Number(req.params.id);
+    if (Number.isNaN(teamId)) {
+      return res.status(400).json({ error: 'Invalid team ID' });
+    }
+
+    try {
+      const sql = `
+        SELECT
+          team_id,
+          team_name
+        FROM public.team
+        WHERE team_id = $1
+      `;
+      const { rows } = await query(sql, [teamId]);
+      if (!rows.length) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+      res.json(rows[0]);
+    } catch (err) {
+      console.error('GET /api/teams/:id error', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
 
 
-// Get a specific team by ID
+// 2) GET /api/teams/:id/players
+//    All players on this team
+app.get(
+  '/api/teams/:id/players',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const teamId = Number(req.params.id);
+    if (Number.isNaN(teamId)) {
+      return res.status(400).json({ error: 'Invalid team ID' });
+    }
+
+    try {
+      const sql = `
+        SELECT
+          u.id                                        AS player_id,
+          u.first_name || ' ' || u.last_name          AS name,
+          u.date_of_birth,
+          p.jersey_no,
+          pos.position_desc,
+          p.position_to_play
+        FROM public.team_player tp
+        JOIN public.player           p   ON tp.player_id = p.player_id
+        JOIN public.users            u   ON p.player_id = u.id
+        JOIN public.playing_position pos ON p.position_to_play = pos.position_id
+        WHERE tp.team_id = $1
+        ORDER BY u.last_name, u.first_name;
+      `;
+      const { rows } = await query(sql, [teamId]);
+      res.json(rows);
+    } catch (err) {
+      console.error('GET /api/teams/:id/players error', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+// 3) GET /api/teams/:id/matches
+//    All matches this team has played
+app.get(
+  '/api/teams/:id/matches',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const teamId = Number(req.params.id);
+    if (Number.isNaN(teamId)) {
+      return res.status(400).json({ error: 'Invalid team ID' });
+    }
+
+    try {
+      const sql = `
+        SELECT
+          m.match_no,
+          m.play_stage,
+          m.play_date,
+          m.team_id1,
+          t1.team_name AS team_name1,
+          m.team_id2,
+          t2.team_name AS team_name2,
+          v.venue_name,
+          m.goal_score,
+          CASE
+            WHEN m.play_date <= CURRENT_DATE THEN 'completed'
+            ELSE 'scheduled'
+          END AS status
+        FROM public.match_played m
+        JOIN public.team  t1 ON m.team_id1 = t1.team_id
+        JOIN public.team  t2 ON m.team_id2 = t2.team_id
+        JOIN public.venue v   ON m.venue_id  = v.venue_id
+        WHERE m.team_id1 = $1
+           OR m.team_id2 = $1
+        ORDER BY m.play_date DESC;
+      `;
+      const { rows } = await query(sql, [teamId]);
+      res.json(rows);
+    } catch (err) {
+      console.error('GET /api/teams/:id/matches error', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+// 4) GET /api/teams/:id/tournaments
+//    All tournaments this team participates in, with stats
+app.get(
+  '/api/teams/:id/tournaments',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const teamId = Number(req.params.id);
+    if (Number.isNaN(teamId)) {
+      return res.status(400).json({ error: 'Invalid team ID' });
+    }
+
+    try {
+      const sql = `
+        SELECT
+          tr.tr_id,
+          tr.tr_name,
+          tt.match_played,
+          tt.won,
+          tt.draw,
+          tt.lost,
+          tt.goal_for,
+          tt.goal_against,
+          tt.goal_diff,
+          tt.points
+        FROM public.tournament_team tt
+        JOIN public.tournament tr
+          ON tt.tr_id = tr.tr_id
+        WHERE tt.team_id = $1
+        ORDER BY tr.start_date;
+      `;
+      const { rows } = await query(sql, [teamId]);
+      res.json(rows);
+    } catch (err) {
+      console.error('GET /api/teams/:id/tournaments error', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
+
+
 
 
 ///////////////////////////////////////// Admin routes /////////////////////////////////////////
