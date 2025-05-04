@@ -1,40 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { venueService } from '../../services/api';
 
 const Venues = () => {
+  const [venues, setVenues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [venueImages, setVenueImages] = useState({});
+  const [matchesAtVenues, setMatchesAtVenues] = useState({});
   
-  // Dummy data based on the schema
-  const venues = [
-    { venue_id: 11, venue_name: 'Main Stadium', venue_status: 'Y', venue_capacity: 20000 },
-    { venue_id: 22, venue_name: 'Indoor Stadium', venue_status: 'Y', venue_capacity: 1000 },
-    { venue_id: 33, venue_name: 'Jabal Field', venue_status: 'N', venue_capacity: 500 },
-    { venue_id: 44, venue_name: 'Student Field', venue_status: 'Y', venue_capacity: 2000 }
+  useEffect(() => {
+    const fetchVenues = async () => {
+      try {
+        setLoading(true);
+        const searchParams = {};
+        
+        if (searchTerm) {
+          searchParams.search = searchTerm;
+        }
+        
+        if (filterStatus !== 'all') {
+          searchParams.status = filterStatus;
+        }
+        
+        const data = await venueService.getAllVenues(searchParams);
+        setVenues(data);
+        
+        // Create venue images mapping
+        const imageMapping = {};
+        data.forEach((venue, index) => {
+          // Assign images in a round-robin fashion
+          const imageIndex = index % defaultImages.length;
+          imageMapping[venue.venue_id] = defaultImages[imageIndex];
+        });
+        setVenueImages(imageMapping);
+        
+        // Create matches count mapping (in real app, this would come from API)
+        const matchesMapping = {};
+        data.forEach(venue => {
+          // Generate random number of matches for demo purposes
+          matchesMapping[venue.venue_id] = Math.floor(Math.random() * 10) + 1;
+        });
+        setMatchesAtVenues(matchesMapping);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching venues:', err);
+        setError('Failed to load venues');
+        setLoading(false);
+      }
+    };
+
+    fetchVenues();
+  }, [searchTerm, filterStatus]);
+  
+  // Handle search and filter changes
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+  
+  const handleStatusChange = (e) => {
+    setFilterStatus(e.target.value);
+  };
+
+  // Default venue image placeholders
+  const defaultImages = [
+    'https://images.unsplash.com/photo-1577223625816-7546f13df25d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1556056504-5c7696c4c28d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1521532863139-30e79ecb8e8e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1581147036324-c17ac41dfa6c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1601224335112-b74158e80c68?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
   ];
-
-  // Filter venues based on search term and status filter
-  const filteredVenues = venues.filter(venue => {
-    const matchesSearch = venue.venue_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || venue.venue_status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
-
-  // Venue images (placeholders)
-  const venueImages = {
-    11: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    22: 'https://images.unsplash.com/photo-1594470117722-de4b9a02ebed?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    33: 'https://images.unsplash.com/photo-1508024783999-6cf70fd10f5a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    44: 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-  };
-
-  // Matches at venues
-  const matchesAtVenues = {
-    11: 2,
-    22: 1,
-    33: 1,
-    44: 0
-  };
 
   return (
     <div className="min-h-screen">
@@ -94,7 +132,7 @@ const Venues = () => {
             
             <div className="flex items-end">
               <span className="text-sm text-gray-500">
-                Showing {filteredVenues.length} out of {venues.length} venues
+                Showing {venues.length} venues
               </span>
             </div>
           </div>
@@ -102,7 +140,7 @@ const Venues = () => {
         
         {/* Venues Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVenues.map(venue => (
+          {venues.map(venue => (
             <div key={venue.venue_id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition-shadow duration-200">
               <div className="relative h-48 bg-blue-50">
                 <img 
@@ -159,7 +197,7 @@ const Venues = () => {
         </div>
 
         {/* No Results */}
-        {filteredVenues.length === 0 && (
+        {venues.length === 0 && !loading && (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

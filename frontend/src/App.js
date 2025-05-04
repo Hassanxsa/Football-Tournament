@@ -1,101 +1,74 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Home from './pages/Home/Home';
+import Layout from './components/Layout';
+import PrivateRoute from './components/PrivateRoute';
+
+// Auth Pages
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
-import TournamentDetails from './pages/TournamentDetails/TournamentDetails';
+
+// Main Pages
+import Home from './pages/Home/Home';
 import Tournaments from './pages/Tournaments/Tournaments';
-import TeamDetails from './pages/TeamDetails/TeamDetails';
+import TournamentDetails from './pages/TournamentDetails/TournamentDetails';
 import Teams from './pages/Teams/Teams';
+import TeamDetails from './pages/TeamDetails/TeamDetails';
 import MatchDetails from './pages/MatchDetails/MatchDetails';
 import Players from './pages/Players/Players';
 import PlayerDetails from './pages/PlayerDetails/PlayerDetails';
 import Venues from './pages/Venues/Venues';
-import PrivateRoute from './components/PrivateRoute';
-import Layout from './components/Layout';
+
+// Admin Pages
+import AdminDashboard from './pages/Admin/Dashboard';
+import AdminTournaments from './pages/Admin/Tournaments';
+import AdminTeams from './pages/Admin/Teams';
+import AdminPlayers from './pages/Admin/Players';
 
 function App() {
   return (
     <Router>
-      <Layout>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+      <Routes>
+        {/* Public Routes - No Layout */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
+        {/* All Protected Routes - Within Layout */}
+        <Route path="/*" element={
+          <PrivateRoute>
+            <Layout>
+              <Routes>
+                {/* Protected Routes */}
+                <Route path="home" element={<Home />} />
           
-          {/* Protected Routes */}
-          <Route path="/home" element={
-            <PrivateRoute>
-              <Home />
-            </PrivateRoute>
-          } />
-    
-          {/* Tournament Routes */}
-          <Route path="/tournaments" element={
-            <PrivateRoute>
-              <Tournaments />
-            </PrivateRoute>
-          } />
-          <Route path="/tournaments/:id" element={
-            <PrivateRoute>
-              <TournamentDetails />
-            </PrivateRoute>
-          } />
-          
-          {/* Team Routes */}
-          <Route path="/teams" element={
-            <PrivateRoute>
-              <Teams />
-            </PrivateRoute>
-          } />
-          <Route path="/teams/:id" element={
-            <PrivateRoute>
-              <TeamDetails />
-            </PrivateRoute>
-          } />
-          
-          {/* Match Routes */}
-          <Route path="/matches/:id" element={
-            <PrivateRoute>
-              <MatchDetails />
-            </PrivateRoute>
-          } />
-          
-          {/* Players Routes */}
-          <Route path="/players" element={
-            <PrivateRoute>
-              <Players />
-            </PrivateRoute>
-          } />
-          <Route path="/players/:id" element={
-            <PrivateRoute>
-              <PlayerDetails />
-            </PrivateRoute>
-          } />
-          
-          {/* Venues Routes */}
-          <Route path="/venues" element={
-            <PrivateRoute>
-              <Venues />
-            </PrivateRoute>
-          } />
-          
-          {/* Admin Routes */}
-          <Route path="/admin/tournaments" element={
-            <PrivateRoute>
-              <Home />
-            </PrivateRoute>
-          } />
-          <Route path="/guest/results/:id" element={
-            <PrivateRoute>
-              <Home />
-            </PrivateRoute>
-          } />
-          
-          {/* Redirect root to login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </Layout>
+                {/* Tournament Routes */}
+                <Route path="tournaments" element={<Tournaments />} />
+                <Route path="tournaments/:id" element={<TournamentDetails />} />
+                
+                {/* Team Routes */}
+                <Route path="teams" element={<Teams />} />
+                <Route path="teams/:id" element={<TeamDetails />} />
+                
+                {/* Match Routes */}
+                <Route path="matches/:id" element={<MatchDetails />} />
+                
+                {/* Players Routes */}
+                <Route path="players" element={<Players />} />
+                <Route path="players/:id" element={<PlayerDetails />} />
+                
+                {/* Venues Routes */}
+                <Route path="venues" element={<Venues />} />
+                
+                {/* Admin Routes */}
+                <Route path="admin" element={<AdminDashboard />} />
+                <Route path="admin/tournaments" element={<AdminTournaments />} />
+                <Route path="admin/teams" element={<AdminTeams />} />
+                <Route path="admin/players" element={<AdminPlayers />} />
+              </Routes>
+            </Layout>
+          </PrivateRoute>
+        } />
+      </Routes>
     </Router>
   );
 }

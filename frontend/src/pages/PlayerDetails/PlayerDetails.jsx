@@ -1,35 +1,46 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { playerService } from '../../services/api';
 
 const PlayerDetails = () => {
   const { id } = useParams();
-  
-  // Dummy data for player details
-  const players = [
-    { player_id: 1001, name: 'Ahmed', jersey_no: 1, position_to_play: 'GK', position_desc: 'Goalkeepers', date_of_birth: '1999-03-10', team_name: 'CCM', team_id: 101 },
-    { player_id: 1003, name: 'Saeed', jersey_no: 2, position_to_play: 'DF', position_desc: 'Defenders', date_of_birth: '2005-03-10', team_name: 'KBS', team_id: 102 },
-    { player_id: 1005, name: 'Majid', jersey_no: 3, position_to_play: 'DF', position_desc: 'Defenders', date_of_birth: '1996-03-10', team_name: 'CCM', team_id: 101 },
-    { player_id: 1007, name: 'Ahmed', jersey_no: 4, position_to_play: 'MF', position_desc: 'Midfielders', date_of_birth: '2001-03-10', team_name: 'CPG', team_id: 103 },
-    { player_id: 1009, name: 'Fahd', jersey_no: 5, position_to_play: 'FD', position_desc: 'Forwards', date_of_birth: '2008-03-10', team_name: 'CEP', team_id: 104 },
-    { player_id: 1011, name: 'Mohammed', jersey_no: 6, position_to_play: 'FD', position_desc: 'Forwards', date_of_birth: '1998-03-10', team_name: 'CDB', team_id: 105 },
-    { player_id: 1013, name: 'Raed', jersey_no: 7, position_to_play: 'MF', position_desc: 'Midfielders', date_of_birth: '1999-07-10', team_name: 'CCM', team_id: 101 },
-    { player_id: 1015, name: 'Mousa', jersey_no: 8, position_to_play: 'DF', position_desc: 'Defenders', date_of_birth: '2009-03-10', team_name: 'KBS', team_id: 102 },
-    { player_id: 1017, name: 'Ali', jersey_no: 9, position_to_play: 'FD', position_desc: 'Forwards', date_of_birth: '2009-03-10', team_name: 'CCM', team_id: 101 },
-    { player_id: 1019, name: 'Yasir', jersey_no: 10, position_to_play: 'MF', position_desc: 'Midfielders', date_of_birth: '2007-03-10', team_name: 'CPG', team_id: 103 },
-  ];
+  const [player, setPlayer] = useState(null);
+  const [matches, setMatches] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Dummy data for recent matches
-  const recentMatches = [
-    { match_id: 2001, match_date: '2023-09-15', team_name1: 'CCM', team_name2: 'KBS', goal_score: '2-1' },
-    { match_id: 2003, match_date: '2023-08-28', team_name1: 'CCM', team_name2: 'CPG', goal_score: '0-0' },
-    { match_id: 2005, match_date: '2023-08-10', team_name1: 'CEP', team_name2: 'CCM', goal_score: '1-3' }
-  ];
+  useEffect(() => {
+    const fetchPlayerDetails = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch player details
+        const playerData = await playerService.getPlayerById(id);
+        setPlayer(playerData);
+        
+        // Fetch player matches
+        const matchesData = await playerService.getPlayerMatches(id);
+        setMatches(matchesData);
+        
+        // Fetch player stats
+        const statsData = await playerService.getPlayerStats(id);
+        setStats(statsData);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching player details:', err);
+        setError('Failed to load player details');
+        setLoading(false);
+      }
+    };
 
-  // Find player by ID
-  const player = players.find(p => p.player_id === parseInt(id)) || players[0];
+    fetchPlayerDetails();
+  }, [id]);
 
   // Calculate age from date of birth
   const calculateAge = (dateOfBirth) => {
+    if (!dateOfBirth) return '';
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
     
@@ -42,6 +53,67 @@ const PlayerDetails = () => {
     
     return age;
   };
+
+  // If loading or error, show appropriate UI
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="spinner-border text-blue-500" role="status">
+            <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <p className="mt-2 text-gray-600">Loading player details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Error Loading Data</h2>
+          <p className="text-gray-600">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!player) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-yellow-500 mb-4">
+            <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Player Not Found</h2>
+          <p className="text-gray-600">The player you are looking for does not exist or has been removed.</p>
+          <Link 
+            to="/players" 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-block"
+          >
+            View All Players
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -94,19 +166,23 @@ const PlayerDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Jersey Number</p>
-                    <p className="text-lg font-medium">{player.jersey_no}</p>
+                    <p className="text-lg font-medium">{player.jersey_no || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Position</p>
-                    <p className="text-lg font-medium">{player.position_desc}</p>
+                    <p className="text-lg font-medium">{player.position_desc || player.position_to_play || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Date of Birth</p>
-                    <p className="text-lg font-medium">{new Date(player.date_of_birth).toLocaleDateString()}</p>
+                    <p className="text-lg font-medium">
+                      {player.date_of_birth ? new Date(player.date_of_birth).toLocaleDateString() : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Age</p>
-                    <p className="text-lg font-medium">{calculateAge(player.date_of_birth)}</p>
+                    <p className="text-lg font-medium">
+                      {player.date_of_birth ? calculateAge(player.date_of_birth) : 'N/A'}
+                    </p>
                   </div>
                 </div>
                 
@@ -124,38 +200,42 @@ const PlayerDetails = () => {
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Matches</h3>
                 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {recentMatches.map(match => (
-                        <tr key={match.match_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(match.match_date).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {match.team_name1} vs {match.team_name2}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {match.goal_score}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <Link to={`/matches/${match.match_id}`} className="text-blue-600 hover:text-blue-800">
-                              View Details
-                            </Link>
-                          </td>
+                {matches && matches.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {matches.map((match, index) => (
+                          <tr key={match.match_no || index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {match.play_date ? new Date(match.play_date).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {match.team_name1} vs {match.team_name2}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {match.goal_score || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <Link to={`/matches/${match.match_no}`} className="text-blue-600 hover:text-blue-800">
+                                View Details
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No match data available for this player.</p>
+                )}
               </div>
             </div>
           </div>
@@ -166,32 +246,43 @@ const PlayerDetails = () => {
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Player Statistics</h3>
                 
-                <div className="space-y-4">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500">Goals</p>
-                    <p className="text-2xl font-bold text-blue-600">5</p>
+                {stats ? (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-500">Goals</p>
+                      <p className="text-2xl font-bold text-blue-600">{stats.goals || 0}</p>
+                    </div>
+                    
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-500">Assists</p>
+                      <p className="text-2xl font-bold text-blue-600">{stats.assists || 0}</p>
+                    </div>
+                    
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-500">Yellow Cards</p>
+                      <p className="text-2xl font-bold text-blue-600">{stats.yellow_cards || 0}</p>
+                    </div>
+                    
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-500">Red Cards</p>
+                      <p className="text-2xl font-bold text-blue-600">{stats.red_cards || 0}</p>
+                    </div>
+                    
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-500">Matches Played</p>
+                      <p className="text-2xl font-bold text-blue-600">{stats.matches_played || 0}</p>
+                    </div>
+                    
+                    {player.position_to_play === 'GK' && (
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-sm text-gray-500">Clean Sheets</p>
+                        <p className="text-2xl font-bold text-blue-600">{stats.clean_sheets || 0}</p>
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500">Assists</p>
-                    <p className="text-2xl font-bold text-blue-600">3</p>
-                  </div>
-                  
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500">Yellow Cards</p>
-                    <p className="text-2xl font-bold text-blue-600">2</p>
-                  </div>
-                  
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500">Red Cards</p>
-                    <p className="text-2xl font-bold text-blue-600">0</p>
-                  </div>
-                  
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500">Matches Played</p>
-                    <p className="text-2xl font-bold text-blue-600">8</p>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-gray-500">No statistics available for this player.</p>
+                )}
               </div>
             </div>
           </div>

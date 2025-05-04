@@ -102,7 +102,7 @@ const checkAdmin = (req, res, next) => {
     });
 };
 
-/////////////////////////////////////////////main pages routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//main pages routes (view tournaments, teams, players, venues, home)
 
 // tournaments route
 
