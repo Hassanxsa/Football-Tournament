@@ -821,7 +821,7 @@ app.post(
 //////////// player routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 // Create a new player
 app.post(
-  '/admin/players',
+  '/api/admin/players',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
