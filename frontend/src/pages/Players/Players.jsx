@@ -163,7 +163,7 @@ const Players = () => {
                   <p className="text-sm text-gray-500 mt-1">Player ID: {player.player_id}</p>
                 </div>
                 <div className="h-14 w-14 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-xl font-bold text-gray-600">{player.player_name.charAt(0)}</span>
+                  <span className="text-xl font-bold text-gray-600">{player.player_name ? player.player_name.charAt(0) : '?'}</span>
                 </div>
               </div>
               
@@ -172,17 +172,17 @@ const Players = () => {
                   to={`/players/${player.player_id}`} 
                   className="block text-xl font-bold text-gray-900 hover:text-blue-600"
                 >
-                  {player.player_name}
+                  {player.player_name || 'Unknown Player'}
                 </Link>
                 <div className="mt-3 space-y-2">
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-900">Team:</span> {player.teams}
+                    <span className="font-medium text-gray-900">Team:</span> {player.teams || 'None'}
                   </p>
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-900">Age:</span> {player.age} years
+                    <span className="font-medium text-gray-900">Age:</span> {player.age ? `${player.age} years` : 'Unknown'}
                   </p>
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-900">Date of Birth:</span> {new Date(player.date_of_birth).toLocaleDateString()}
+                    <span className="font-medium text-gray-900">Date of Birth:</span> {player.date_of_birth ? new Date(player.date_of_birth).toLocaleDateString() : 'Unknown'}
                   </p>
                 </div>
                 <div className="mt-4">
