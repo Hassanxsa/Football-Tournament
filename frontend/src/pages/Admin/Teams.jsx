@@ -28,6 +28,32 @@ const AdminTeams = () => {
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedCaptain, setSelectedCaptain] = useState('');
   const [teamPlayers, setTeamPlayers] = useState([]);
+  
+  // Delete team function
+  const deleteTeam = async (teamId, teamName) => {
+    if (window.confirm(`Are you sure you want to delete the team '${teamName}'? This action cannot be undone.`)) {
+      try {
+        await teamService.deleteTeam(teamId);
+        // Refresh the teams list after deletion
+        const teamsData = await teamService.getAdminTeams();
+        setTeams(teamsData);
+        setSuccessMessage('Team deleted successfully!');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      } catch (err) {
+        console.error('Error deleting team:', err);
+        // Display the specific error from the backend if available
+        if (err.response && err.response.data && err.response.data.error) {
+          setError(err.response.data.error);
+        } else {
+          setError('Failed to delete team. Please try again.');
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,7 +175,12 @@ const AdminTeams = () => {
       setSuccessMessage('Team added successfully!');
     } catch (err) {
       console.error('Error creating team:', err);
-      setError('Failed to create team. Please try again.');
+      // Display the specific error from the backend if available
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Failed to create team. Please try again.');
+      }
     }
     
     // Clear success message after 3 seconds
@@ -494,6 +525,9 @@ const AdminTeams = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tournaments
                 </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -511,22 +545,16 @@ const AdminTeams = () => {
                   // Get team players count
                   const teamPlayersCount = safePlayers.filter(p => p.team_id === team.team_id).length;
                   
-                  // Get tournaments this team is in (simplified for demo)
-                  const teamTournaments = [
-                    { tr_id: 1, team_id: 1214 },
-                    { tr_id: 1, team_id: 1215 },
-                    { tr_id: 1, team_id: 1216 },
-                    { tr_id: 1, team_id: 1217 },
-                    { tr_id: 2, team_id: 1218 },
-                    { tr_id: 2, team_id: 1219 },
-                    { tr_id: 3, team_id: 1220 },
-                    { tr_id: 3, team_id: 1221 }
-                  ].filter(tt => tt.team_id === team.team_id);
+                  // Get tournaments this team is in from the team's tournaments array
+                  const teamTournaments = team.tournaments ? 
+                    (Array.isArray(team.tournaments) ? team.tournaments : []) : 
+                    [];
                   
-                  const teamTournamentNames = teamTournaments.map(tt => {
-                    const tournament = safeTournaments.find(t => t.tr_id === tt.tr_id);
-                    return tournament ? tournament.tr_name : 'Unknown';
-                  });
+                  // The API should return tournament names directly in the tournaments array
+                  // If it's already an array of names, we can use it directly
+                  const teamTournamentNames = Array.isArray(teamTournaments) ? 
+                    teamTournaments : 
+                    [];
                   
                   return (
                     <tr key={team.team_id} className="hover:bg-gray-50">
@@ -550,6 +578,14 @@ const AdminTeams = () => {
                         ) : (
                           <span className="text-yellow-500">Not in any tournament</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => deleteTeam(team.team_id, team.team_name)}
+                          className="text-red-600 hover:text-red-900 bg-white border border-red-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   );

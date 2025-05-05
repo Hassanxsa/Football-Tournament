@@ -185,11 +185,18 @@ export const teamService = {
   // Admin Services
   getAdminTeams: async () => {
     const response = await api.get('/api/admin/teams');
-    return response.data;
+    // The API returns { teams: [...], tournaments: [...] }
+    // Extract just the teams array
+    return response.data && response.data.teams ? response.data.teams : [];
   },
   
   createTeam: async (teamData) => {
     const response = await api.post('/api/admin/teams', teamData);
+    return response.data;
+  },
+  
+  deleteTeam: async (teamId) => {
+    const response = await api.delete(`/api/admin/teams/${teamId}`);
     return response.data;
   },
   
@@ -239,6 +246,27 @@ export const playerService = {
   // Admin Services
   createPlayer: async (playerData) => {
     const response = await api.post('/api/admin/players', playerData);
+    return response.data;
+  },
+  
+  // Player request services
+  submitPlayerRequest: async (requestData) => {
+    const response = await api.post('/api/player-request', requestData);
+    return response.data;
+  },
+  
+  getPlayerRequests: async () => {
+    const response = await api.get('/api/admin/players/requests');
+    return response.data;
+  },
+  
+  approvePlayerRequest: async (requestId) => {
+    const response = await api.post(`/api/admin/players/approve/${requestId}`);
+    return response.data;
+  },
+  
+  rejectPlayerRequest: async (requestId) => {
+    const response = await api.post(`/api/admin/players/reject/${requestId}`);
     return response.data;
   },
   

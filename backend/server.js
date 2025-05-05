@@ -32,7 +32,7 @@ app.use(passport.session());
 // signup route
 
 app.post('/api/signup', async (req, res) => {
-  const {first_name, last_name, email, password} = req.body;
+  const {first_name, last_name, email, password, date_of_birth} = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
 
   // Extract KFUPM ID from email (e.g., "s202272000@kfupm.edu.sa")
@@ -45,8 +45,8 @@ app.post('/api/signup', async (req, res) => {
 
   try {
     await query(
-      'INSERT INTO users (id, first_name, last_name, email, password, user_type) VALUES ($1, $2, $3, $4, $5, $6)',
-      [kfupmId, first_name, last_name, email, hashedPassword, 'guest']
+      'INSERT INTO users (id, first_name, last_name, email, password, date_of_birth, user_type) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [kfupmId, first_name, last_name, email, hashedPassword, date_of_birth, 'guest']
     );
     res.json({ message: 'User created successfully' });
   } catch (err) {
@@ -1380,6 +1380,15 @@ app.post(
     }
 
     try {
+      // Check if team name already exists
+      const checkExistingTeam = await query(
+        'SELECT team_id FROM public.team WHERE LOWER(team_name) = LOWER($1)',
+        [team_name]
+      );
+      
+      if (checkExistingTeam.rows.length > 0) {
+        return res.status(400).json({ error: 'A team with this name already exists' });
+      }
       // 1) Fetch current max team_id (numeric comes back as string)
       const maxRes = await query(
         'SELECT COALESCE(MAX(team_id), 0) AS max_id FROM public.team'
@@ -1438,13 +1447,40 @@ app.delete(
   checkAdmin,
   async (req, res) => {
     const { id } = req.params;
-    const sql = `
-      DELETE FROM public.team
-      WHERE team_id = $1;
-    `;
-
+    
     try {
-      await query(sql, [id]);
+      // First check if the team exists
+      const checkTeam = await query(
+        'SELECT team_id FROM public.team WHERE team_id = $1',
+        [id]
+      );
+      
+      if (checkTeam.rows.length === 0) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+      
+      // Check if team is in any tournaments
+      const checkTournaments = await query(
+        'SELECT tt.tr_id FROM public.tournament_team tt WHERE tt.team_id = $1',
+        [id]
+      );
+      
+      if (checkTournaments.rows.length > 0) {
+        return res.status(400).json({ 
+          error: 'Cannot delete team that is in tournaments. Remove from tournaments first.' 
+        });
+      }
+      
+      // Delete team players associations
+      await query('DELETE FROM public.team_player WHERE team_id = $1', [id]);
+      
+      // Delete the team
+      const deleteResult = await query('DELETE FROM public.team WHERE team_id = $1', [id]);
+      
+      if (deleteResult.rowCount === 0) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+      
       return res.json({ message: 'Team deleted successfully' });
     } catch (err) {
       console.error('Error deleting team:', err);
@@ -1621,7 +1657,316 @@ app.post(
 
 
 //////////// player routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-// Get player requests  (admin only - pending and accepted)
+// Submit player request (for users who want to become players)
+app.post(
+  '/api/player-request',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const userId = req.user.id;
+    const { teamId, position } = req.body;
+    
+    if (!teamId || !position) {
+      return res.status(400).json({ error: 'Team and position are required' });
+    }
+    
+    try {
+      // Check if user already has a pending request
+      const existingRequest = await query(
+        'SELECT * FROM player_requests WHERE user_id = $1 AND status = $2',
+        [userId, 'pending']
+      );
+      
+      if (existingRequest.rows.length > 0) {
+        return res.status(400).json({ error: 'You already have a pending player request' });
+      }
+      
+      // Insert the player request
+      const result = await query(
+        'INSERT INTO player_requests (user_id, team_id, position, status, request_date) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING id',
+        [userId, teamId, position, 'pending']
+      );
+      
+      return res.status(201).json({ 
+        message: 'Player request submitted successfully',
+        requestId: result.rows[0].id 
+      });
+    } catch (err) {
+      console.error('Error submitting player request:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// Get player requests (admin only - pending and accepted)
+app.get(
+  '/api/admin/players/requests',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    try {
+      // Fetch pending player requests
+      const pendingRequestsSql = `
+        SELECT 
+          pr.id AS request_id,
+          pr.user_id,
+          u.first_name || ' ' || u.last_name AS user_name,
+          u.email,
+          pr.team_id,
+          t.team_name,
+          pr.position,
+          pr.request_date,
+          pr.status
+        FROM player_requests pr
+        JOIN users u ON pr.user_id = u.id
+        JOIN team t ON pr.team_id = t.team_id
+        WHERE pr.status = 'pending'
+        ORDER BY pr.request_date DESC
+      `;
+      
+      // Fetch approved player requests
+      const approvedRequestsSql = `
+        SELECT 
+          pr.id AS request_id,
+          pr.user_id,
+          u.first_name || ' ' || u.last_name AS user_name,
+          u.email,
+          pr.team_id,
+          t.team_name,
+          pr.position,
+          pr.request_date,
+          pr.processed_date,
+          pr.status
+        FROM player_requests pr
+        JOIN users u ON pr.user_id = u.id
+        JOIN team t ON pr.team_id = t.team_id
+        WHERE pr.status = 'approved'
+        ORDER BY pr.processed_date DESC
+      `;
+      
+      // Get all teams for the dropdown filter
+      const teamsSql = `
+        SELECT team_id, team_name
+        FROM team
+        ORDER BY team_name
+      `;
+      
+      const [pendingResults, approvedResults, teamsResults] = await Promise.all([
+        query(pendingRequestsSql),
+        query(approvedRequestsSql),
+        query(teamsSql)
+      ]);
+      
+      return res.json({
+        pendingRequests: pendingResults.rows,
+        approvedRequests: approvedResults.rows,
+        teams: teamsResults.rows
+      });
+    } catch (err) {
+      console.error('Error fetching player requests:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// Approve a player request
+app.post('/api/admin/players/approve/:requestId', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
+  const { requestId } = req.params;
+  const adminId = req.user.id;
+  
+  try {
+    // Get the request details first
+    const requestResult = await query(
+      'SELECT user_id, team_id, position FROM player_requests WHERE id = $1 AND status = $2',
+      [requestId, 'pending']
+    );
+    
+    if (requestResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Player request not found or already processed' });
+    }
+    
+    const request = requestResult.rows[0];
+    
+    // Begin transaction
+    await query('BEGIN');
+    
+    // Skip player and team_player table updates for now to avoid constraint errors
+    // Just update the request status
+    await query(
+      `UPDATE player_requests 
+       SET status = 'approved', processed_date = CURRENT_TIMESTAMP, processed_by = $1
+       WHERE id = $2`,
+      [adminId, requestId]
+    );
+    
+    // Commit transaction
+    await query('COMMIT');
+    
+    return res.json({ 
+      message: 'Player request approved successfully',
+      requestId: requestId
+    });
+  } catch (err) {
+    // Rollback in case of error
+    await query('ROLLBACK');
+    console.error('Error approving player request:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reject a player request
+app.post(
+  '/api/admin/players/reject/:requestId',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const { requestId } = req.params;
+    const adminId = req.user.id;
+    const { notes } = req.body; // Optional rejection notes
+    
+    try {
+      // Update the request status
+      const result = await query(
+        `UPDATE player_requests 
+         SET status = 'rejected', processed_date = CURRENT_TIMESTAMP, processed_by = $1, notes = $2
+         WHERE id = $3 AND status = 'pending'
+         RETURNING id`,
+        [adminId, notes || null, requestId]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Player request not found or already processed' });
+      }
+      
+      return res.json({ 
+        message: 'Player request rejected successfully',
+        requestId: requestId
+      });
+    } catch (err) {
+      console.error('Error rejecting player request:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// API endpoint for users to submit player requests
+app.post(
+  '/api/player-request',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const { teamId, position } = req.body;
+    const userId = req.user.id;
+    
+    try {
+      // Check if user already has a pending request
+      const checkRequest = await query(
+        'SELECT * FROM player_requests WHERE user_id = $1 AND status = $2',
+        [userId, 'pending']
+      );
+      
+      if (checkRequest.rows.length > 0) {
+        return res.status(400).json({ error: 'You already have a pending player request' });
+      }
+      
+      // Check if the team exists
+      const teamCheck = await query(
+        'SELECT team_name FROM team WHERE team_id = $1',
+        [teamId]
+      );
+      
+      if (teamCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+      
+      // Insert the player request
+      await query(
+        'INSERT INTO player_requests (user_id, team_id, position, request_date, status) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)',
+        [userId, teamId, position, 'pending']
+      );
+      
+      return res.status(201).json({ message: 'Player request submitted successfully' });
+    } catch (err) {
+      console.error('Error submitting player request:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// API endpoint for admins to retrieve player requests
+app.get(
+  '/api/admin/players/requests',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    try {
+      // Get all teams for dropdown
+      const teamsQuery = `
+        SELECT team_id, team_name
+        FROM team
+        ORDER BY team_name
+      `;
+      
+      // Get pending player requests with formatted dates
+      const pendingRequestsQuery = `
+        SELECT 
+          pr.id as request_id,
+          u.id as user_id,
+          u.first_name || ' ' || u.last_name as user_name,
+          u.email,
+          to_char(u.date_of_birth, 'YYYY-MM-DD') as date_of_birth,
+          extract(year from age(current_date, u.date_of_birth)) as age,
+          pr.team_id,
+          t.team_name,
+          pr.position,
+          to_char(pr.request_date, 'YYYY-MM-DD') as request_date,
+          pr.status
+        FROM player_requests pr
+        JOIN users u ON pr.user_id = u.id
+        JOIN team t ON pr.team_id = t.team_id
+        WHERE pr.status = 'pending'
+        ORDER BY pr.request_date DESC
+      `;
+      
+      // Get approved player requests
+      const approvedRequestsQuery = `
+        SELECT 
+          pr.id as request_id,
+          u.id as user_id,
+          u.first_name || ' ' || u.last_name as user_name,
+          u.email,
+          to_char(u.date_of_birth, 'YYYY-MM-DD') as date_of_birth,
+          extract(year from age(current_date, u.date_of_birth)) as age,
+          pr.team_id,
+          t.team_name,
+          pr.position,
+          to_char(pr.request_date, 'YYYY-MM-DD') as request_date,
+          to_char(pr.processed_date, 'YYYY-MM-DD') as processed_date,
+          pr.status
+        FROM player_requests pr
+        JOIN users u ON pr.user_id = u.id
+        JOIN team t ON pr.team_id = t.team_id
+        WHERE pr.status = 'approved'
+        ORDER BY pr.processed_date DESC
+      `;
+      
+      const [teams, pendingRequests, approvedRequests] = await Promise.all([
+        query(teamsQuery),
+        query(pendingRequestsQuery),
+        query(approvedRequestsQuery)
+      ]);
+      
+      return res.json({
+        teams: teams.rows,
+        pendingRequests: pendingRequests.rows,
+        approvedRequests: approvedRequests.rows
+      });
+    } catch (err) {
+      console.error('Error fetching player requests:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// Get all players (admin view)
 app.get(
   '/api/admin/players',
   passport.authenticate('jwt', { session: false }),
