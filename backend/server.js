@@ -61,18 +61,41 @@ app.post('/api/signup', async (req, res) => {
 
 app.post('/api/login', (req, res) => {
   passport.authenticate('local', { session: false }, (err, user, info) => {
-    if (err || !user) {
-      return res.status(400).json({
-        message: 'Something is not right',
-        user: user
+    if (err) {
+      console.error('Login error:', err);
+      return res.status(500).json({
+        message: 'Internal server error during login',
       });
     }
+    
+    if (!user) {
+      return res.status(401).json({
+        message: info ? info.message : 'Invalid email or password',
+      });
+    }
+    
     req.login(user, { session: false }, (err) => {
       if (err) {
-        res.send(err);
+        console.error('Login session error:', err);
+        return res.status(500).json({ message: 'Error during login process' });
       }
-      const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-      return res.json({ token });
+      
+      // Include user role information in the token payload
+      const token = jwt.sign({ 
+        id: user.id,
+        role: user.user_type || 'user'
+      }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      
+      return res.status(200).json({ 
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.user_type || 'user'
+        }
+      });
     });
   })(req, res);
 });
@@ -87,17 +110,39 @@ app.get('/', (req, res) => {
 
 // Middleware to check if user is admin
 const checkAdmin = (req, res, next) => {
+  console.log('checkAdmin middleware called');
+  console.log('User from request:', req.user);
+  
+  // Make sure user exists in the request
+  if (!req.user || !req.user.id) {
+    console.log('No user in request or missing ID');
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  
   const userId = req.user.id;
+  console.log('Checking admin status for user ID:', userId);
+  
+  // Check if user is already admin in the token
+  if (req.user.role === 'admin') {
+    console.log('User is admin according to JWT token');
+    return next();
+  }
+  
+  // Fallback to database check
   query('SELECT user_type FROM users WHERE id = $1', [userId])
     .then(result => {
+      console.log('Database query result:', result.rows);
+      
       if (result.rows.length > 0 && result.rows[0].user_type === 'admin') {
+        console.log('User is admin according to database');
         next();
       } else {
+        console.log('User is NOT admin:', result.rows);
         res.status(403).json({ message: 'Access denied' });
       }
     })
     .catch(err => {
-      console.error(err);
+      console.error('Database error when checking admin:', err);
       res.status(500).json({ error: 'Internal server error' });
     });
 };
@@ -1102,8 +1147,6 @@ app.get(
 
 
 
-
-///////////////////////////////////////// Admin routes /////////////////////////////////////////
 // admin tournament route
 
 /////////////////////// tournament routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\

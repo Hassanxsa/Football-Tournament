@@ -70,9 +70,19 @@ export const authService = {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('isAuthenticated', 'true');
       
-      // You could also decode the JWT to get user data like role
-      // For now we'll use a simple approach
-      localStorage.setItem('userRole', email.includes('admin') ? 'admin' : 'user');
+      // Store the user role from the server response
+      if (response.data.user && response.data.user.role) {
+        localStorage.setItem('userRole', response.data.user.role);
+        console.log('User role set to:', response.data.user.role);
+      } else {
+        // Fallback
+        localStorage.setItem('userRole', 'user');
+      }
+      
+      // Also store the entire user object for future reference
+      if (response.data.user) {
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
     }
     return response.data;
   },

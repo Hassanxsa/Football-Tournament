@@ -72,6 +72,17 @@ const Navbar = () => {
                 >
                   Venues
                 </Link>
+                
+                <Link
+                  to="/admin"
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    isActive('/admin')
+                      ? 'bg-blue-900 text-white'
+                      : 'text-blue-100 hover:bg-blue-700 hover:text-white'
+                  }`}
+                >
+                  Admin
+                </Link>
               </div>
             </div>
           </div>
@@ -127,6 +138,9 @@ const Navbar = () => {
           </Link>
           <Link to="/venues" className="block px-3 py-2 rounded-md text-base font-medium text-blue-200 hover:text-white hover:bg-blue-700">
             Venues
+          </Link>
+          <Link to="/admin" className="block px-3 py-2 rounded-md text-base font-medium text-blue-200 hover:text-white hover:bg-blue-700">
+            Admin
           </Link>
         </div>
       </div>
