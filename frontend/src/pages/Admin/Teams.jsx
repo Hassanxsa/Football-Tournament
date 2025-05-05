@@ -29,6 +29,25 @@ const AdminTeams = () => {
   const [selectedCaptain, setSelectedCaptain] = useState('');
   const [teamPlayers, setTeamPlayers] = useState([]);
   
+  // Effect to load team players when a team is selected
+  useEffect(() => {
+    if (selectedTeam) {
+      // Filter players for the selected team from the already loaded players
+      const filteredPlayers = safePlayers.filter(player => 
+        player.team_id === parseInt(selectedTeam)
+      );
+      setTeamPlayers(filteredPlayers);
+      
+      // Reset captain selection
+      setSelectedCaptain('');
+      
+      console.log(`Loaded ${filteredPlayers.length} players for team ${selectedTeam}`);
+    } else {
+      // Clear team players when no team is selected
+      setTeamPlayers([]);
+    }
+  }, [selectedTeam, safePlayers]);
+  
   // Delete team function
   const deleteTeam = async (teamId, teamName) => {
     if (window.confirm(`Are you sure you want to delete the team '${teamName}'? This action cannot be undone.`)) {
