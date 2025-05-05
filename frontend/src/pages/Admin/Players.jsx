@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { playerService, teamService } from '../../services/api';
 
 const AdminPlayers = () => {
   const [teams, setTeams] = useState([]);
@@ -11,108 +12,222 @@ const AdminPlayers = () => {
   const [teamFilter, setTeamFilter] = useState('');
 
   useEffect(() => {
-    // In a real app, this would be an API call
-    setTimeout(() => {
-      // Teams data
-      const teamsData = [
-        { team_id: 1214, team_name: 'CCM' },
-        { team_id: 1215, team_name: 'KBS' },
-        { team_id: 1216, team_name: 'CEP' },
-        { team_id: 1217, team_name: 'CPG' },
-        { team_id: 1218, team_name: 'CIE' },
-        { team_id: 1219, team_name: 'MGE' }
-      ];
-      
-      // Pending players data
-      const pendingPlayersData = [
-        { player_id: 2001, name: 'Yousef Al-Harbi', team_id: 1214, jersey_no: 14, position: 'Midfielder', date_of_birth: '2000-05-10', status: 'pending' },
-        { player_id: 2002, name: 'Faisal Al-Otaibi', team_id: 1215, jersey_no: 9, position: 'Forward', date_of_birth: '1999-07-22', status: 'pending' },
-        { player_id: 2003, name: 'Hassan Al-Qahtani', team_id: 1216, jersey_no: 5, position: 'Defender', date_of_birth: '2001-03-15', status: 'pending' },
-        { player_id: 2004, name: 'Khalid Al-Shehri', team_id: 1217, jersey_no: 1, position: 'Goalkeeper', date_of_birth: '1998-11-30', status: 'pending' },
-        { player_id: 2005, name: 'Majid Al-Dosari', team_id: 1218, jersey_no: 7, position: 'Midfielder', date_of_birth: '2002-01-05', status: 'pending' }
-      ];
-      
-      // Approved players data
-      const approvedPlayersData = [
-        { player_id: 1001, name: 'Ahmed', team_id: 1214, jersey_no: 1, position: 'Goalkeeper', date_of_birth: '1999-03-10', status: 'approved', is_captain: true },
-        { player_id: 1002, name: 'Mohammad', team_id: 1214, jersey_no: 2, position: 'Defender', date_of_birth: '1999-05-15', status: 'approved', is_captain: false },
-        { player_id: 1003, name: 'Ali', team_id: 1214, jersey_no: 3, position: 'Defender', date_of_birth: '2000-02-20', status: 'approved', is_captain: false },
-        { player_id: 1004, name: 'Saeed', team_id: 1215, jersey_no: 1, position: 'Goalkeeper', date_of_birth: '1998-07-05', status: 'approved', is_captain: true },
-        { player_id: 1005, name: 'Khalid', team_id: 1215, jersey_no: 5, position: 'Midfielder', date_of_birth: '2001-01-30', status: 'approved', is_captain: false },
-        { player_id: 1006, name: 'Omar', team_id: 1216, jersey_no: 10, position: 'Forward', date_of_birth: '1997-11-25', status: 'approved', is_captain: true },
-        { player_id: 1007, name: 'Fahad', team_id: 1216, jersey_no: 7, position: 'Midfielder', date_of_birth: '1999-08-12', status: 'approved', is_captain: false },
-        { player_id: 1008, name: 'Abdullah', team_id: 1217, jersey_no: 4, position: 'Defender', date_of_birth: '2000-04-18', status: 'approved', is_captain: false }
-      ];
-      
-      setTeams(teamsData);
-      setPendingPlayers(pendingPlayersData);
-      setApprovedPlayers(approvedPlayersData);
-      setLoading(false);
-    }, 500);
-  }, []);
-
-  const approvePlayer = (playerId) => {
-    // Find the player to approve
-    const playerToApprove = pendingPlayers.find(player => player.player_id === playerId);
-    if (!playerToApprove) return;
-    
-    // In a real app, this would be an API call
-    
-    // Update the player status to approved
-    const updatedPlayer = {
-      ...playerToApprove,
-      status: 'approved',
-      is_captain: false
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch player requests data
+        const response = await playerService.getPlayerRequests();
+        
+        if (response) {
+          // Extract teams
+          setTeams(response.teams || []);
+          
+          // Extract pending player requests
+          const pendingRequests = response.pendingRequests || [];
+          const formattedPendingRequests = pendingRequests.map(req => ({
+            request_id: req.request_id,
+            player_id: req.user_id,
+            name: req.user_name,
+            email: req.email,
+            date_of_birth: req.date_of_birth,
+            age: req.age,
+            team_id: req.team_id,
+            team_name: req.team_name,
+            position: req.position,
+            request_date: req.request_date,
+            status: 'pending'
+          }));
+          setPendingPlayers(formattedPendingRequests);
+          
+          // Extract approved player requests
+          const approvedRequests = response.approvedRequests || [];
+          const formattedApprovedRequests = approvedRequests.map(req => ({
+            request_id: req.request_id,
+            player_id: req.user_id,
+            name: req.user_name,
+            email: req.email,
+            date_of_birth: req.date_of_birth,
+            age: req.age,
+            team_id: req.team_id,
+            team_name: req.team_name,
+            position: req.position,
+            request_date: req.request_date,
+            processed_date: req.processed_date,
+            status: 'approved'
+          }));
+          setApprovedPlayers(formattedApprovedRequests);
+        } else {
+          setError('Failed to retrieve player requests data');
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load data. Please try again.');
+        setLoading(false);
+      }
     };
     
-    // Add to approved players and remove from pending
-    setApprovedPlayers(prev => [...prev, updatedPlayer]);
-    setPendingPlayers(prev => prev.filter(player => player.player_id !== playerId));
-    
-    // Show success message
-    setSuccessMessage(`${playerToApprove.name} has been approved to join ${getTeamName(playerToApprove.team_id)}`);
-    
-    // Clear success message after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage('');
-    }, 3000);
+    fetchData();
+  }, []);
+
+  const approvePlayer = async (requestId) => {
+    try {
+      setLoading(true);
+      
+      // Find the player request to approve
+      const requestToApprove = pendingPlayers.find(player => player.request_id === requestId);
+      if (!requestToApprove) {
+        setError('Request not found');
+        setLoading(false);
+        return;
+      }
+      
+      // Call API to approve the player request
+      await playerService.approvePlayerRequest(requestId);
+      
+      // Update UI
+      const approvedRequest = {
+        ...requestToApprove,
+        status: 'approved',
+        processed_date: new Date().toISOString()
+      };
+      
+      // Add to approved players and remove from pending
+      setApprovedPlayers(prev => [...prev, approvedRequest]);
+      setPendingPlayers(prev => prev.filter(player => player.request_id !== requestId));
+      
+      // Show success message
+      setSuccessMessage(`${requestToApprove.name} has been approved to join ${requestToApprove.team_name}`);
+      setLoading(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (err) {
+      console.error('Error approving player:', err);
+      setError('Failed to approve player. Please try again.');
+      setLoading(false);
+    }
   };
 
-  const rejectPlayer = (playerId) => {
-    // Find the player to reject
-    const playerToReject = pendingPlayers.find(player => player.player_id === playerId);
-    if (!playerToReject) return;
-    
-    // In a real app, this would be an API call
-    
-    // Remove from pending
-    setPendingPlayers(prev => prev.filter(player => player.player_id !== playerId));
-    
-    // Show success message
-    setSuccessMessage(`${playerToReject.name}'s request to join ${getTeamName(playerToReject.team_id)} has been rejected`);
-    
-    // Clear success message after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage('');
-    }, 3000);
+  const rejectPlayer = async (requestId) => {
+    try {
+      setLoading(true);
+      
+      // Find the player request to reject
+      const requestToReject = pendingPlayers.find(player => player.request_id === requestId);
+      if (!requestToReject) {
+        setError('Request not found');
+        setLoading(false);
+        return;
+      }
+      
+      // Call API to reject the player request
+      await playerService.rejectPlayerRequest(requestId);
+      
+      // Remove from pending players
+      setPendingPlayers(prev => prev.filter(player => player.request_id !== requestId));
+      
+      // Show success message
+      setSuccessMessage(`${requestToReject.name}'s request has been rejected`);
+      setLoading(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (err) {
+      console.error('Error rejecting player:', err);
+      setError('Failed to reject player. Please try again.');
+      setLoading(false);
+    }
   };
 
   // Helper to get team name from team ID
   const getTeamName = (teamId) => {
-    const team = teams.find(team => team.team_id === teamId);
+    const team = teams.find(t => t.team_id === teamId);
     return team ? team.team_name : 'Unknown Team';
+  };
+  
+  // Refresh data
+  const refreshData = async () => {
+    try {
+      setLoading(true);
+      const response = await playerService.getPlayerRequests();
+      
+      if (response) {
+        // Update teams
+        setTeams(response.teams || []);
+        
+        // Update pending requests
+        const pendingRequests = response.pendingRequests || [];
+        const formattedPendingRequests = pendingRequests.map(req => ({
+          request_id: req.request_id,
+          player_id: req.user_id,
+          name: req.user_name,
+          email: req.email,
+          team_id: req.team_id,
+          team_name: req.team_name,
+          position: req.position,
+          request_date: req.request_date,
+          status: 'pending'
+        }));
+        setPendingPlayers(formattedPendingRequests);
+        
+        // Update approved requests
+        const approvedRequests = response.approvedRequests || [];
+        const formattedApprovedRequests = approvedRequests.map(req => ({
+          request_id: req.request_id,
+          player_id: req.user_id,
+          name: req.user_name,
+          email: req.email,
+          team_id: req.team_id,
+          team_name: req.team_name,
+          position: req.position,
+          request_date: req.request_date,
+          processed_date: req.processed_date,
+          status: 'approved'
+        }));
+        setApprovedPlayers(formattedApprovedRequests);
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+      setError('Failed to refresh data');
+      setLoading(false);
+    }
   };
 
   // Format date
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    // Check if the date string is valid
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'N/A';
+    }
+    
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return date.toLocaleDateString(undefined, options);
   };
 
   // Calculate age from date of birth
   const calculateAge = (dateOfBirth) => {
-    const today = new Date();
+    if (!dateOfBirth) return 'N/A';
+    
+    // Check if dateOfBirth is valid
     const birthDate = new Date(dateOfBirth);
+    if (isNaN(birthDate.getTime())) {
+      return 'N/A';
+    }
+    
+    const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     
@@ -191,11 +306,23 @@ const AdminPlayers = () => {
 
       {/* Pending Player Requests */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
-        <div className="px-6 py-4 bg-yellow-50 border-b border-yellow-100">
-          <h2 className="text-xl font-semibold text-gray-800">Pending Player Requests</h2>
-          <p className="text-gray-600 text-sm mt-1">
-            Players waiting to be approved to join teams
-          </p>
+        <div className="px-6 py-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">Player Approval Requests</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              New player requests waiting for your approval
+            </p>
+          </div>
+          <button
+            onClick={refreshData}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
+            disabled={loading}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+            </svg>
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
         
         <div className="overflow-x-auto">
@@ -211,12 +338,7 @@ const AdminPlayers = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Position
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Jersey #
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Age
-                </th>
+
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -235,33 +357,29 @@ const AdminPlayers = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{player.name}</div>
                       <div className="text-xs text-gray-500">ID: {player.player_id}</div>
-                      <div className="text-xs text-gray-500">DOB: {formatDate(player.date_of_birth)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getTeamName(player.team_id)}
+                      {player.team_name || getTeamName(player.team_id)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {player.position}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {player.jersey_no}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {calculateAge(player.date_of_birth)}
-                    </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-3">
+                      <div className="flex space-x-2">
                         <button 
-                          onClick={() => approvePlayer(player.player_id)} 
+                          onClick={() => approvePlayer(player.request_id)} 
                           className="text-green-600 hover:text-green-900"
+                          disabled={loading}
                         >
-                          Approve
+                          {loading ? 'Processing...' : 'Approve'}
                         </button>
                         <button 
-                          onClick={() => rejectPlayer(player.player_id)} 
+                          onClick={() => rejectPlayer(player.request_id)} 
                           className="text-red-600 hover:text-red-900"
+                          disabled={loading}
                         >
-                          Reject
+                          {loading ? 'Processing...' : 'Reject'}
                         </button>
                       </div>
                     </td>
@@ -296,9 +414,6 @@ const AdminPlayers = () => {
                   Position
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Jersey #
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
                 </th>
               </tr>
@@ -316,16 +431,12 @@ const AdminPlayers = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{player.name}</div>
                       <div className="text-xs text-gray-500">ID: {player.player_id}</div>
-                      <div className="text-xs text-gray-500">DOB: {formatDate(player.date_of_birth)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getTeamName(player.team_id)}
+                      {player.team_name || getTeamName(player.team_id)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {player.position}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {player.jersey_no}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {player.is_captain ? (

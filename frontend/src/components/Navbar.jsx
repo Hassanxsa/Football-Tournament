@@ -1,11 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import PlayerRequestDialog from './PlayerRequestDialog';
 
 const Navbar = () => {
   const location = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [playerRequestSent, setPlayerRequestSent] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showPlayerRequestDialog, setShowPlayerRequestDialog] = useState(false);
+  
+  useEffect(() => {
+    // Check if user is authenticated
+    const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+    setIsAuthenticated(authStatus);
+    
+    // Get current user ID from localStorage
+    const userData = localStorage.getItem('user');
+    let userId = null;
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        userId = user.id;
+        
+        // Check if player request has been sent for this specific user
+        const requestStatus = localStorage.getItem(`playerRequestSent-${userId}`) === 'true';
+        setPlayerRequestSent(requestStatus);
+      } catch (err) {
+        console.error('Error parsing user data:', err);
+      }
+    }
+  }, []);
   
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+  
+  const handlePlayerRequest = () => {
+    // Show the player request dialog
+    setShowPlayerRequestDialog(true);
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userRole');
+    setIsAuthenticated(false);
+    window.location.href = '/login';
   };
 
   return (
@@ -72,11 +112,34 @@ const Navbar = () => {
                 >
                   Venues
                 </Link>
+                
+                <Link
+                  to="/admin"
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    isActive('/admin')
+                      ? 'bg-blue-900 text-white'
+                      : 'text-blue-100 hover:bg-blue-700 hover:text-white'
+                  }`}
+                >
+                  Admin
+                </Link>
               </div>
             </div>
           </div>
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
+              {isAuthenticated && (
+                <button 
+                  onClick={handlePlayerRequest}
+                  disabled={playerRequestSent}
+                  className={`mr-4 px-3 py-1 rounded-md text-sm font-medium ${playerRequestSent 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-green-600 hover:bg-green-700'} text-white`}
+                >
+                  {playerRequestSent ? 'Player Request Sent' : 'Request to be a Player'}
+                </button>
+              )}
+              
               <button className="bg-blue-700 p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-white">
                 <span className="sr-only">View notifications</span>
                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -87,13 +150,36 @@ const Navbar = () => {
               {/* Profile dropdown */}
               <div className="ml-3 relative">
                 <div>
-                  <button className="max-w-xs bg-blue-700 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-white">
+                  <button 
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="max-w-xs bg-blue-700 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-white"
+                  >
                     <span className="sr-only">Open user menu</span>
                     <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
                       <span className="text-white font-medium">U</span>
                     </div>
                   </button>
                 </div>
+                
+                {showDropdown && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    {isAuthenticated ? (
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Sign out
+                      </button>
+                    ) : (
+                      <Link
+                        to="/login"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Sign in
+                      </Link>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -128,8 +214,17 @@ const Navbar = () => {
           <Link to="/venues" className="block px-3 py-2 rounded-md text-base font-medium text-blue-200 hover:text-white hover:bg-blue-700">
             Venues
           </Link>
+          <Link to="/admin" className="block px-3 py-2 rounded-md text-base font-medium text-blue-200 hover:text-white hover:bg-blue-700">
+            Admin
+          </Link>
         </div>
       </div>
+      
+      {/* Player Request Dialog */}
+      <PlayerRequestDialog 
+        isOpen={showPlayerRequestDialog} 
+        onClose={() => setShowPlayerRequestDialog(false)} 
+      />
     </nav>
   );
 };

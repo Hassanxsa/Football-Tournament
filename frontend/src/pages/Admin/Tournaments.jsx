@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { tournamentService } from '../../services/api';
 
 const AdminTournaments = () => {
   const [tournaments, setTournaments] = useState([]);
@@ -13,16 +14,39 @@ const AdminTournaments = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    // In a real app, this would be an API call
-    setTimeout(() => {
-      const tournamentsData = [
-        { tr_id: 1, tr_name: 'Faculty Tournament', start_date: '2023-03-01', end_date: '2023-04-15', status: 'active' },
-        { tr_id: 2, tr_name: 'Open Tournament', start_date: '2023-03-05', end_date: '2023-04-20', status: 'active' },
-        { tr_id: 3, tr_name: 'Student Tournament', start_date: '2023-03-10', end_date: '2023-04-25', status: 'active' }
-      ];
-      setTournaments(tournamentsData);
-      setLoading(false);
-    }, 500);
+    const fetchTournaments = async () => {
+      try {
+        setLoading(true);
+        // Use the admin service to get tournaments
+        const response = await tournamentService.getAdminTournaments();
+        console.log('Raw API response:', response);
+        
+        // The response might already be the data array (not wrapped in a data property)
+        let tournaments = [];
+        
+        if (Array.isArray(response)) {
+          // If response is already an array, use it directly
+          tournaments = response;
+        } else if (response && Array.isArray(response.data)) {
+          // If response has a data property that's an array
+          tournaments = response.data;
+        } else if (response) {
+          // Last resort - try to use the response itself
+          tournaments = [response];
+        }
+        
+        // Check data type and log for debugging
+        console.log('Processed tournaments data:', tournaments);
+        setTournaments(tournaments);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching tournaments:', err);
+        setError('Failed to load tournaments. Please try again.');
+        setLoading(false);
+      }
+    };
+
+    fetchTournaments();
   }, []);
 
   const handleInputChange = (e) => {
@@ -33,7 +57,7 @@ const AdminTournaments = () => {
     }));
   };
 
-  const addTournament = (e) => {
+  const addTournament = async (e) => {
     e.preventDefault();
     
     // Basic validation
@@ -48,25 +72,42 @@ const AdminTournaments = () => {
       return;
     }
     
-    // In a real app, this would be an API call
-    // Add tournament with new ID and active status
-    const newId = Math.max(...tournaments.map(t => t.tr_id), 0) + 1;
-    const tournamentToAdd = {
-      tr_id: newId,
+    // Add status to the tournament data
+    const tournamentData = {
       ...newTournament,
       status: 'active'
     };
     
-    setTournaments(prev => [...prev, tournamentToAdd]);
-    
-    // Reset form and show success message
-    setNewTournament({
-      tr_name: '',
-      start_date: '',
-      end_date: ''
-    });
-    setError(null);
-    setSuccessMessage('Tournament added successfully!');
+    try {
+      // Call the API to create the tournament
+      console.log('Sending tournament data:', tournamentData);
+      const response = await tournamentService.createTournament(tournamentData);
+      console.log('Tournament creation response:', response);
+      
+      // Refresh the tournament list
+      const listResponse = await tournamentService.getAdminTournaments();
+      console.log('Tournament list response:', listResponse);
+      const tournaments = listResponse.data ? listResponse.data : [];
+      setTournaments(Array.isArray(tournaments) ? tournaments : []);
+      
+      // Reset form and show success message
+      setNewTournament({
+        tr_name: '',
+        start_date: '',
+        end_date: ''
+      });
+      setError(null);
+      setSuccessMessage('Tournament added successfully!');
+    } catch (err) {
+      console.error('Error creating tournament:', err);
+      if (err.message === 'Unauthorized') {
+        setError('Authentication error. Please log in again.');
+      } else if (err.response && err.response.status === 403) {
+        setError('Access denied. Admin privileges required.');
+      } else {
+        setError(`Failed to create tournament: ${err.message || 'Unknown error'}`);
+      }
+    }
     
     // Clear success message after 3 seconds
     setTimeout(() => {
@@ -74,12 +115,20 @@ const AdminTournaments = () => {
     }, 3000);
   };
 
-  const deleteTournament = (id) => {
+  const deleteTournament = async (id) => {
     if (window.confirm('Are you sure you want to delete this tournament? This action cannot be undone.')) {
-      // In a real app, this would be an API call
-      setTournaments(prev => prev.filter(t => t.tr_id !== id));
-      
-      setSuccessMessage('Tournament deleted successfully!');
+      try {
+        // Call the API to delete the tournament
+        await tournamentService.deleteTournament(id);
+        
+        // Update the tournaments list by filtering out the deleted one
+        setTournaments(prev => prev.filter(t => t.tr_id !== id));
+        
+        setSuccessMessage('Tournament deleted successfully!');
+      } catch (err) {
+        console.error('Error deleting tournament:', err);
+        setError('Failed to delete tournament. Please try again.');
+      }
       
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -90,8 +139,77 @@ const AdminTournaments = () => {
 
   // Format date
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+  
+  // Helper function to determine tournament status based on dates and status field
+  const getTournamentStatus = (tournament) => {
+    const today = new Date();
+    const startDate = tournament.start_date ? new Date(tournament.start_date) : null;
+    const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
+    
+    if (!startDate || !endDate) return 'unknown';
+    
+    // Normalize status to lowercase for comparison
+    const statusLower = (tournament.status || '').toLowerCase();
+    
+    // If status is explicitly set to something meaningful, honor it
+    if (statusLower === 'completed' || statusLower === 'cancelled') {
+      return statusLower;
+    }
+    
+    // Otherwise determine status based on dates
+    if (today < startDate) {
+      return 'upcoming';
+    } else if (today > endDate) {
+      return 'completed';
+    } else {
+      return 'active'; // Currently ongoing
+    }
+  };
+  
+  // Function to get the CSS class for status badge
+  const getTournamentStatusClass = (tournament) => {
+    const status = getTournamentStatus(tournament);
+    
+    switch(status) {
+      case 'active':
+      case 'ongoing':
+        return 'bg-green-100 text-green-800';
+      case 'upcoming':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-gray-100 text-gray-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
+  // Function to get the display label for status
+  const getTournamentStatusLabel = (tournament) => {
+    const status = getTournamentStatus(tournament);
+    
+    switch(status) {
+      case 'active':
+      case 'ongoing':
+        return 'Active';
+      case 'upcoming':
+        return 'Upcoming';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Unknown';
+    }
   };
 
   if (loading) {
@@ -234,7 +352,6 @@ const AdminTournaments = () => {
                   <tr key={tournament.tr_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{tournament.tr_name}</div>
-                      <div className="text-xs text-gray-500">ID: {tournament.tr_id}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
@@ -243,8 +360,8 @@ const AdminTournaments = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${tournament.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                        {tournament.status === 'active' ? 'Active' : 'Inactive'}
+                        ${getTournamentStatusClass(tournament)}`}>
+                        {getTournamentStatusLabel(tournament)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

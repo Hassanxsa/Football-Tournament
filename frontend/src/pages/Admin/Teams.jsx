@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { teamService, tournamentService, playerService } from '../../services/api';
 
 const AdminTeams = () => {
   const location = useLocation();
@@ -9,6 +10,11 @@ const AdminTeams = () => {
   const [tournaments, setTournaments] = useState([]);
   const [teams, setTeams] = useState([]);
   const [players, setPlayers] = useState([]);
+  
+  // Ensure these are always arrays, even if API returns something else
+  const safeTeams = Array.isArray(teams) ? teams : [];
+  const safeTournaments = Array.isArray(tournaments) ? tournaments : [];
+  const safePlayers = Array.isArray(players) ? players : [];
   const [loading, setLoading] = useState(true);
   const [selectedTournament, setSelectedTournament] = useState('');
   const [newTeam, setNewTeam] = useState({ team_name: '' });
@@ -22,60 +28,71 @@ const AdminTeams = () => {
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedCaptain, setSelectedCaptain] = useState('');
   const [teamPlayers, setTeamPlayers] = useState([]);
+  
+  // Effect to load team players when a team is selected
+  useEffect(() => {
+    if (selectedTeam) {
+      // Filter players for the selected team from the already loaded players
+      const filteredPlayers = safePlayers.filter(player => 
+        player.team_id === parseInt(selectedTeam)
+      );
+      setTeamPlayers(filteredPlayers);
+      
+      // Reset captain selection
+      setSelectedCaptain('');
+      
+      console.log(`Loaded ${filteredPlayers.length} players for team ${selectedTeam}`);
+    } else {
+      // Clear team players when no team is selected
+      setTeamPlayers([]);
+    }
+  }, [selectedTeam, safePlayers]);
+  
+  // Delete team function
+  const deleteTeam = async (teamId, teamName) => {
+    if (window.confirm(`Are you sure you want to delete the team '${teamName}'? This action cannot be undone.`)) {
+      try {
+        await teamService.deleteTeam(teamId);
+        // Refresh the teams list after deletion
+        const teamsData = await teamService.getAdminTeams();
+        setTeams(teamsData);
+        setSuccessMessage('Team deleted successfully!');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      } catch (err) {
+        console.error('Error deleting team:', err);
+        // Display the specific error from the backend if available
+        if (err.response && err.response.data && err.response.data.error) {
+          setError(err.response.data.error);
+        } else {
+          setError('Failed to delete team. Please try again.');
+        }
+      }
+    }
+  };
 
   useEffect(() => {
-    // In a real app, these would be API calls
     const fetchData = async () => {
       try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setLoading(true);
         
         // Tournament data
-        const tournamentsData = [
-          { tr_id: 1, tr_name: 'Faculty Tournament' },
-          { tr_id: 2, tr_name: 'Open Tournament' },
-          { tr_id: 3, tr_name: 'Student Tournament' }
-        ];
+        const tournamentsResponse = await tournamentService.getAllTournaments();
+        console.log('Tournament response:', tournamentsResponse);
+        const tournamentsData = processApiResponse(tournamentsResponse);
         
         // Teams data
-        const teamsData = [
-          { team_id: 1214, team_name: 'CCM' },
-          { team_id: 1215, team_name: 'KBS' },
-          { team_id: 1216, team_name: 'CEP' },
-          { team_id: 1217, team_name: 'CPG' },
-          { team_id: 1218, team_name: 'CIE' },
-          { team_id: 1219, team_name: 'MGE' },
-          { team_id: 1220, team_name: 'CHE' },
-          { team_id: 1221, team_name: 'ARC' }
-        ];
+        const teamsResponse = await teamService.getAdminTeams();
+        console.log('Teams response:', teamsResponse);
+        const teamsData = processApiResponse(teamsResponse);
         
-        // Tournament teams data (for checking which teams are already in tournaments)
-        const tournamentTeams = [
-          { tr_id: 1, team_id: 1214 },
-          { tr_id: 1, team_id: 1215 },
-          { tr_id: 1, team_id: 1216 },
-          { tr_id: 1, team_id: 1217 },
-          { tr_id: 2, team_id: 1218 },
-          { tr_id: 2, team_id: 1219 },
-          { tr_id: 3, team_id: 1220 },
-          { tr_id: 3, team_id: 1221 }
-        ];
-        
-        // Players data with captain info
-        const playersData = [
-          { player_id: 1001, name: 'Ahmed', team_id: 1214, is_captain: true },
-          { player_id: 1002, name: 'Mohammad', team_id: 1214, is_captain: false },
-          { player_id: 1003, name: 'Ali', team_id: 1214, is_captain: false },
-          { player_id: 1004, name: 'Saeed', team_id: 1215, is_captain: true },
-          { player_id: 1005, name: 'Khalid', team_id: 1215, is_captain: false },
-          { player_id: 1006, name: 'Omar', team_id: 1216, is_captain: true },
-          { player_id: 1007, name: 'Fahad', team_id: 1216, is_captain: false },
-          { player_id: 1008, name: 'Abdullah', team_id: 1217, is_captain: false },
-          { player_id: 1009, name: 'Nasser', team_id: 1218, is_captain: true },
-          { player_id: 1010, name: 'Ibrahim', team_id: 1219, is_captain: false },
-          { player_id: 1011, name: 'Majid', team_id: 1220, is_captain: true },
-          { player_id: 1012, name: 'Talal', team_id: 1221, is_captain: false }
-        ];
+        // Players data
+        const playersResponse = await playerService.getAllPlayers();
+        console.log('Players response:', playersResponse);
+        const playersData = processApiResponse(playersResponse);
         
         // Set all the data
         setTournaments(tournamentsData);
@@ -86,10 +103,11 @@ const AdminTeams = () => {
         if (tournamentIdFromParam) {
           setSelectedTournament(tournamentIdFromParam);
           
+          // Get tournament teams
+          const tournamentTeamsData = await tournamentService.getTournamentTeams(tournamentIdFromParam);
+          
           // Get teams not in this tournament yet
-          const teamsInTournament = tournamentTeams
-            .filter(tt => tt.tr_id === parseInt(tournamentIdFromParam))
-            .map(tt => tt.team_id);
+          const teamsInTournament = tournamentTeamsData.map(team => team.team_id);
           
           const availableTeams = teamsData.filter(team => 
             !teamsInTournament.includes(team.team_id)
@@ -103,7 +121,7 @@ const AdminTeams = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
-        setError('Failed to load data. Please try again later.');
+        setError('Failed to load data');
         setLoading(false);
       }
     };
@@ -111,7 +129,25 @@ const AdminTeams = () => {
     fetchData();
   }, [tournamentIdFromParam]);
 
-  // Handle team selection for captain assignment
+  // Helper function to process API responses
+  const processApiResponse = (response) => {
+    // If response is an array, return it directly
+    if (Array.isArray(response)) {
+      return response;
+    }
+    // If response has a data property that's an array
+    else if (response && Array.isArray(response.data)) {
+      return response.data;
+    }
+    // If response is an object but not an array
+    else if (response && typeof response === 'object') {
+      // Last resort - return an array with the object
+      return [response];
+    }
+    // Default to empty array if nothing else works
+    return [];
+  };
+
   useEffect(() => {
     if (selectedTeam) {
       const teamPlayersData = players.filter(player => player.team_id === parseInt(selectedTeam));
@@ -135,29 +171,36 @@ const AdminTeams = () => {
     }));
   };
 
-  const addTeam = (e) => {
+  const addTeam = async (e) => {
     e.preventDefault();
     
     // Basic validation
-    if (!newTeam.team_name.trim()) {
+    if (!newTeam.team_name) {
       setError('Team name is required');
       return;
     }
     
-    // In a real app, this would be an API call
-    // Add team with new ID
-    const newId = Math.max(...teams.map(t => t.team_id), 0) + 1;
-    const teamToAdd = {
-      team_id: newId,
-      team_name: newTeam.team_name
-    };
-    
-    setTeams(prev => [...prev, teamToAdd]);
-    
-    // Reset form and show success message
-    setNewTeam({ team_name: '' });
-    setError(null);
-    setSuccessMessage('Team added successfully!');
+    try {
+      // Call API to create a new team
+      await teamService.createTeam(newTeam);
+      
+      // Refresh the teams list
+      const teamsData = await teamService.getAdminTeams();
+      setTeams(teamsData);
+      
+      // Reset form and show success message
+      setNewTeam({ team_name: '' });
+      setError(null);
+      setSuccessMessage('Team added successfully!');
+    } catch (err) {
+      console.error('Error creating team:', err);
+      // Display the specific error from the backend if available
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Failed to create team. Please try again.');
+      }
+    }
     
     // Clear success message after 3 seconds
     setTimeout(() => {
@@ -165,20 +208,45 @@ const AdminTeams = () => {
     }, 3000);
   };
 
-  const addTeamToTournament = () => {
+  const addTeamToTournament = async () => {
+    // Basic validation
     if (!selectedTournament || !teamToAdd) {
       setError('Please select both a tournament and a team');
       return;
     }
     
-    // In a real app, this would be an API call
-    // Here we just show a success message
-    const tournamentName = tournaments.find(t => t.tr_id === parseInt(selectedTournament))?.tr_name;
-    const teamName = teams.find(t => t.team_id === parseInt(teamToAdd))?.team_name;
+    try {
+      // Call API to add team to tournament
+      await teamService.addTeamToTournament({
+        tr_id: parseInt(selectedTournament),
+        team_id: parseInt(teamToAdd)
+      });
+      
+      // Get tournament and team names for success message
+      const tournamentName = tournaments.find(t => t.tr_id === parseInt(selectedTournament))?.tr_name;
+      const teamName = teams.find(t => t.team_id === parseInt(teamToAdd))?.team_name;
+      
+      // Refresh the data
+      const tournamentsData = await tournamentService.getAllTournaments();
+      const teamsData = await teamService.getAdminTeams();
+      const playersData = await playerService.getAllPlayers();
+      
+      // Update state with fresh data
+      setTournaments(tournamentsData);
+      setTeams(teamsData);
+      setPlayers(playersData);
+      
+      // Reset selection
+      setTeamToAdd('');
+      
+      // Show success message
+      setSuccessMessage(`Team ${teamName} added to ${tournamentName} successfully!`);
+    } catch (err) {
+      console.error('Error adding team to tournament:', err);
+      setError('Failed to add team to tournament. Please try again.');
+    }
     
-    setSuccessMessage(`Team ${teamName} added to ${tournamentName} successfully!`);
-    
-    // Reset selection and clear success message after 3 seconds
+    // Clear success message after 3 seconds
     setTimeout(() => {
       setSuccessMessage('');
     }, 3000);
@@ -240,25 +308,25 @@ const AdminTeams = () => {
   // Get teams that are not in the selected tournament
   const getAvailableTeams = () => {
     if (!selectedTournament) return [];
+    if (!Array.isArray(safeTeams)) {
+      console.warn('Teams is not an array:', safeTeams);
+      return [];
+    }
     
-    // In a real app, this data would come from the API
-    // Here we're using a simplified approach for demo
-    const teamsInTournament = [
-      { tr_id: 1, team_id: 1214 },
-      { tr_id: 1, team_id: 1215 },
-      { tr_id: 1, team_id: 1216 },
-      { tr_id: 1, team_id: 1217 },
-      { tr_id: 2, team_id: 1218 },
-      { tr_id: 2, team_id: 1219 },
-      { tr_id: 3, team_id: 1220 },
-      { tr_id: 3, team_id: 1221 }
-    ];
+    // Check if we have tournament data with team info
+    const selectedTournamentObj = safeTournaments.find(t => t.tr_id === parseInt(selectedTournament) || t.tr_id === selectedTournament);
+    console.log('Selected tournament:', selectedTournamentObj);
     
-    const teamIdsInTournament = teamsInTournament
-      .filter(tt => tt.tr_id === parseInt(selectedTournament))
-      .map(tt => tt.team_id);
+    // For now, just return all teams as available
+    // In a production app, you would filter based on teams already in the tournament
+    // This would require an API call to get the current teams in the tournament
     
-    return teams.filter(team => !teamIdsInTournament.includes(team.team_id));
+    // For debugging, log everything
+    console.log('All teams:', safeTeams);
+    console.log('Selected tournament ID:', selectedTournament);
+    
+    // Return all teams as available for now
+    return safeTeams;
   };
 
   const availableTeams = getAvailableTeams();
@@ -343,11 +411,12 @@ const AdminTeams = () => {
               required
             >
               <option value="">Select a tournament</option>
-              {tournaments.map(tournament => (
+              {safeTournaments.map(tournament => (
                 <option key={tournament.tr_id} value={tournament.tr_id}>
                   {tournament.tr_name}
                 </option>
               ))}
+              {safeTournaments.length === 0 && <option key="no-tournaments" value="">No tournaments available</option>}
             </select>
           </div>
           
@@ -364,11 +433,11 @@ const AdminTeams = () => {
               required
             >
               <option value="">Select a team</option>
-              {availableTeams.map(team => (
+              {Array.isArray(availableTeams) ? availableTeams.map(team => (
                 <option key={team.team_id} value={team.team_id}>
                   {team.team_name}
                 </option>
-              ))}
+              )) : <option key="no-available-teams" value="">No available teams</option>}
             </select>
             {selectedTournament && availableTeams.length === 0 && (
               <p className="mt-1 text-sm text-red-500">
@@ -406,11 +475,12 @@ const AdminTeams = () => {
               required
             >
               <option value="">Select a team</option>
-              {teams.map(team => (
+              {safeTeams.map(team => (
                 <option key={team.team_id} value={team.team_id}>
                   {team.team_name}
                 </option>
               ))}
+              {safeTeams.length === 0 && <option key="no-teams" value="">No teams available</option>}
             </select>
           </div>
           
@@ -427,11 +497,11 @@ const AdminTeams = () => {
               required
             >
               <option value="">Select a player</option>
-              {teamPlayers.map(player => (
+              {Array.isArray(teamPlayers) ? teamPlayers.map(player => (
                 <option key={player.player_id} value={player.player_id}>
                   {player.name} {player.is_captain ? "(Current Captain)" : ""}
                 </option>
-              ))}
+              )) : <option key="no-players" value="">No players available</option>}
             </select>
             {selectedTeam && teamPlayers.length === 0 && (
               <p className="mt-1 text-sm text-red-500">
@@ -474,39 +544,36 @@ const AdminTeams = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tournaments
                 </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {teams.length === 0 ? (
+              {safeTeams.length === 0 ? (
                 <tr>
                   <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
                     No teams found
                   </td>
                 </tr>
               ) : (
-                teams.map((team) => {
+                safeTeams.map((team) => {
                   // Get captain
-                  const captain = players.find(p => p.team_id === team.team_id && p.is_captain);
+                  const captain = safePlayers.find(p => p.team_id === team.team_id && p.is_captain);
                   
                   // Get team players count
-                  const teamPlayersCount = players.filter(p => p.team_id === team.team_id).length;
+                  const teamPlayersCount = safePlayers.filter(p => p.team_id === team.team_id).length;
                   
-                  // Get tournaments this team is in (simplified for demo)
-                  const teamTournaments = [
-                    { tr_id: 1, team_id: 1214 },
-                    { tr_id: 1, team_id: 1215 },
-                    { tr_id: 1, team_id: 1216 },
-                    { tr_id: 1, team_id: 1217 },
-                    { tr_id: 2, team_id: 1218 },
-                    { tr_id: 2, team_id: 1219 },
-                    { tr_id: 3, team_id: 1220 },
-                    { tr_id: 3, team_id: 1221 }
-                  ].filter(tt => tt.team_id === team.team_id);
+                  // Get tournaments this team is in from the team's tournaments array
+                  const teamTournaments = team.tournaments ? 
+                    (Array.isArray(team.tournaments) ? team.tournaments : []) : 
+                    [];
                   
-                  const teamTournamentNames = teamTournaments.map(tt => {
-                    const tournament = tournaments.find(t => t.tr_id === tt.tr_id);
-                    return tournament ? tournament.tr_name : 'Unknown';
-                  });
+                  // The API should return tournament names directly in the tournaments array
+                  // If it's already an array of names, we can use it directly
+                  const teamTournamentNames = Array.isArray(teamTournaments) ? 
+                    teamTournaments : 
+                    [];
                   
                   return (
                     <tr key={team.team_id} className="hover:bg-gray-50">
@@ -530,6 +597,14 @@ const AdminTeams = () => {
                         ) : (
                           <span className="text-yellow-500">Not in any tournament</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => deleteTeam(team.team_id, team.team_name)}
+                          className="text-red-600 hover:text-red-900 bg-white border border-red-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   );
