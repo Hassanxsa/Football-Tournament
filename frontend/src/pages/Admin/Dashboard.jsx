@@ -63,6 +63,24 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
+
+        {/* Match Management Card */}
+        <div className="bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300">
+          <div className="p-6">
+            <div className="flex items-center mb-4">
+              <div className="bg-amber-100 p-3 rounded-full">
+                <svg className="h-8 w-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="ml-4 text-xl font-semibold text-gray-800">Matches</h2>
+            </div>
+            <p className="text-gray-600 mb-4">Schedule matches, update scores, and manage match details</p>
+            <Link to="/admin/matches" className="block text-center py-2 px-4 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors duration-300">
+              Manage Matches
+            </Link>
+          </div>
+        </div>
         
         {/* Project Information Card */}
       </div>
