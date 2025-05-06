@@ -56,6 +56,54 @@ const ensureAdmin = async (req, res, next) => {
   }
 };
 
+// Get matches for a specific tournament
+app.get('/api/tournaments/:trId/matches', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  try {
+    const { trId } = req.params;
+    
+    // First, get all teams in this tournament
+    const teamsQuery = await query(
+      `SELECT team_id FROM tournament_team WHERE tr_id = $1`,
+      [trId]
+    );
+    
+    if (teamsQuery.rows.length === 0) {
+      return res.json([]);
+    }
+    
+    // Extract team IDs
+    const teamIds = teamsQuery.rows.map(team => team.team_id);
+    
+    // Now get all matches where either team1 or team2 is in our list of tournament teams
+    const matchesQuery = await query(
+      `SELECT 
+        m.match_no, 
+        m.play_date,
+        t1.team_id AS team_id1,
+        t1.team_name AS team1,
+        t2.team_id AS team_id2,
+        t2.team_name AS team2,
+        v.venue_name AS venue,
+        m.results,
+        m.goal_score,
+        $2 AS tournament_name
+      FROM public.match_played AS m
+      JOIN public.team AS t1 ON m.team_id1 = t1.team_id
+      JOIN public.team AS t2 ON m.team_id2 = t2.team_id
+      JOIN public.venue AS v ON m.venue_id = v.venue_id
+      WHERE 
+        (m.team_id1 = ANY($1::numeric[]) OR m.team_id2 = ANY($1::numeric[]))
+      ORDER BY m.play_date DESC`,
+      [teamIds, (await query('SELECT tr_name FROM tournament WHERE tr_id = $1', [trId])).rows[0]?.tr_name || 'Unknown Tournament']
+    );
+    
+    res.json(matchesQuery.rows);
+  } catch (error) {
+    console.error('Error fetching tournament matches:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // signup route
 
 app.post('/api/signup', async (req, res) => {
@@ -443,7 +491,6 @@ app.get(
       const recentMatchesQ = `
         SELECT
           m.match_no,
-          m.play_stage,
           m.play_date,
           t1.team_name AS team1,
           t2.team_name AS team2,
@@ -1684,7 +1731,7 @@ app.get('/api/matches/:matchNo', async (req, res) => {
   try {
     // Get main match information
     const matchQuery = await query(
-      `SELECT mp.match_no, mp.play_stage, mp.play_date, 
+      `SELECT mp.match_no, mp.play_date, 
         mp.team_id1, t1.team_name as team1_name, 
         mp.team_id2, t2.team_name as team2_name, 
         mp.results, mp.goal_score, 
@@ -1787,11 +1834,31 @@ app.post('/api/tournaments/:trId/matches', passport.authenticate('jwt', { sessio
     const maxMatchNo = maxMatchNoResult.rows[0].max || 0;
     const newMatchNo = maxMatchNo + 1;
 
+    // First get valid player_id values from the database
+    const playerQuery = await query('SELECT player_id FROM player LIMIT 1');
+    let validPlayerId = null;
+    
+    if (playerQuery.rows.length > 0) {
+      validPlayerId = playerQuery.rows[0].player_id;
+    }
+    
     // Insert the new match
-    const newMatch = await query(
-      'INSERT INTO match_played (match_no, tr_id, match_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *',
-      [newMatchNo, trId, play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec]
-    );
+    let newMatch;
+    
+    if (validPlayerId) {
+      // If we have a valid player, use it for player_of_match
+      newMatch = await query(
+        'INSERT INTO match_played (match_no, play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+        [newMatchNo, play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, validPlayerId, stop1_sec || 0, stop2_sec || 0]
+      );
+    } else {
+      // If we couldn't find a valid player, attempt an insert without the player_of_match field
+      // This requires your DB schema to allow NULL for this field, or for it to have a DEFAULT value set
+      newMatch = await query(
+        'INSERT INTO match_played (match_no, play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, stop1_sec, stop2_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+        [newMatchNo, play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, stop1_sec || 0, stop2_sec || 0]
+      );
+    }
 
     // If match has a score (not a future match), update league standings
     if (goal_score && goal_score !== '0-0' && goal_score !== 'N/A') {
@@ -1808,7 +1875,7 @@ app.post('/api/tournaments/:trId/matches', passport.authenticate('jwt', { sessio
 // Update a match
 app.put('/api/matches/:matchNo', passport.authenticate('jwt', { session: false }), async (req, res) => {
   const { matchNo } = req.params;
-  const { play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec } = req.body;
+  const { play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec } = req.body;
 
   try {
     // Check if match exists
@@ -1817,14 +1884,34 @@ app.put('/api/matches/:matchNo', passport.authenticate('jwt', { session: false }
       return res.status(404).json({ message: 'Match not found' });
     }
 
-    // Get the tournament ID for this match
-    const trId = matchExists.rows[0].tr_id;
+    // Get tournament ID from tournament_team using one of the teams
+    const teamTournamentQuery = await query('SELECT tr_id FROM tournament_team WHERE team_id = $1 LIMIT 1', [team_id1]);
+    const trId = teamTournamentQuery.rows[0]?.tr_id;
 
+    // First get valid player_id values from the database
+    const playerQuery = await query('SELECT player_id FROM player LIMIT 1');
+    let validPlayerId = null;
+    
+    if (playerQuery.rows.length > 0) {
+      validPlayerId = playerQuery.rows[0].player_id;
+    }
+    
     // Update the match
-    const updatedMatch = await query(
-      'UPDATE match_played SET match_date = $1, team_id1 = $2, team_id2 = $3, play_stage = $4, venue_id = $5, results = $6, decided_by = $7, goal_score = $8, audience = $9, player_of_match = $10, stop1_sec = $11, stop2_sec = $12 WHERE match_no = $13 RETURNING *',
-      [play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec, matchNo]
-    );
+    let updatedMatch;
+    
+    if (validPlayerId) {
+      // If we have a valid player, use it for player_of_match
+      updatedMatch = await query(
+        'UPDATE match_played SET play_date = $1, team_id1 = $2, team_id2 = $3, venue_id = $4, results = $5, decided_by = $6, goal_score = $7, audience = $8, player_of_match = $9, stop1_sec = $10, stop2_sec = $11 WHERE match_no = $12 RETURNING *',
+        [play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, validPlayerId, stop1_sec || 0, stop2_sec || 0, matchNo]
+      );
+    } else {
+      // If we couldn't find a valid player, attempt an update without the player_of_match field
+      updatedMatch = await query(
+        'UPDATE match_played SET play_date = $1, team_id1 = $2, team_id2 = $3, venue_id = $4, results = $5, decided_by = $6, goal_score = $7, audience = $8, stop1_sec = $9, stop2_sec = $10 WHERE match_no = $11 RETURNING *',
+        [play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, stop1_sec || 0, stop2_sec || 0, matchNo]
+      );
+    }
 
     // If match has a score, update league standings
     if (goal_score && goal_score !== '0-0' && goal_score !== 'N/A') {

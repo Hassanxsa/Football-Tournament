@@ -3,9 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { tournamentService, matchService } from '../../../services/api';
 
 const MatchForm = () => {
-  const { trId, matchId } = useParams(); // trId for tournament ID, matchId for match ID when editing
+  const { trId, matchNo } = useParams(); // trId for tournament ID, matchNo for match ID when editing
   const navigate = useNavigate();
-  const isEditMode = !!matchId;
+  const isEditMode = !!matchNo;
   
   const [tournaments, setTournaments] = useState([]);
   const [tournamentTeams, setTournamentTeams] = useState([]);
@@ -18,7 +18,6 @@ const MatchForm = () => {
   // Initialize with default values
   const [formData, setFormData] = useState({
     play_date: new Date().toISOString().split('T')[0], // Today's date
-    play_stage: 'G', // Group stage by default
     team_id1: '',
     team_id2: '',
     venue_id: '',
@@ -26,7 +25,7 @@ const MatchForm = () => {
     decided_by: 'N', // Normal play
     goal_score: '0-0', // Default score
     audience: 0,
-    player_of_match: null,
+    player_of_match: 123456789, // Default to system user ID
     stop1_sec: 0,
     stop2_sec: 0,
     tr_id: trId || ''
@@ -55,15 +54,21 @@ const MatchForm = () => {
         }
         
         // If editing an existing match, fetch its details
-        if (isEditMode && matchId) {
-          const matchData = await matchService.getMatchById(matchId);
+        if (isEditMode && matchNo) {
+          const matchData = await matchService.getMatchById(matchNo);
+          // Use the tournament ID from the URL or try to get it from other match data
+          let tournamentId = trId || '';
+            
           setFormData({
             ...matchData,
             play_date: matchData.play_date ? matchData.play_date.split('T')[0] : new Date().toISOString().split('T')[0],
             team_id1: matchData.team_id1,
             team_id2: matchData.team_id2,
-            tr_id: trId || ''
-          });
+            tr_id: tournamentId || '',
+            results: matchData.results || 'N/A',
+            goal_score: matchData.goal_score || '0-0',
+            decided_by: matchData.decided_by || 'N'
+          })
         }
         
         setLoading(false);
@@ -75,7 +80,7 @@ const MatchForm = () => {
     };
     
     fetchData();
-  }, [trId, matchId, isEditMode]);
+  }, [trId, matchNo, isEditMode]);
   
   // When tournament changes, fetch its teams
   const handleTournamentChange = async (e) => {
@@ -126,7 +131,7 @@ const MatchForm = () => {
       
       if (isEditMode) {
         // Update existing match
-        await matchService.updateMatch(matchId, formData);
+        await matchService.updateMatch(matchNo, formData);
         setSuccessMessage('Match updated successfully!');
       } else {
         // Create new match
@@ -193,7 +198,7 @@ const MatchForm = () => {
               name="tr_id"
               value={formData.tr_id}
               onChange={handleTournamentChange}
-              disabled={isEditMode || !!trId}
+              disabled={isEditMode}
               className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               required
             >
@@ -204,24 +209,10 @@ const MatchForm = () => {
                 </option>
               ))}
             </select>
+            {isEditMode && <p className="text-xs text-gray-500 mt-1">Tournament cannot be changed for existing matches</p>}
           </div>
           
-          {/* Play Stage */}
-          <div>
-            <label htmlFor="play_stage" className="block text-sm font-medium text-gray-700 mb-2">
-              Stage
-            </label>
-            <select
-              id="play_stage"
-              name="play_stage"
-              value="G"
-              disabled={true}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="G">Points League</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-1">This tournament uses a points-based league system only.</p>
-          </div>
+
         </div>
         
         {/* Match Date */}
@@ -293,6 +284,50 @@ const MatchForm = () => {
               ))}
             </select>
           </div>
+        </div>
+        
+        {/* Match Results */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200 pt-4 mt-4">
+          <div className="md:col-span-3">
+            <h3 className="text-lg font-medium text-gray-700">Match Results</h3>
+            <p className="text-sm text-gray-500">Fill these in after the match has been played</p>
+          </div>
+          
+          <div>
+            <label htmlFor="goal_score" className="block text-sm font-medium text-gray-700 mb-2">
+              Score (Home-Away)
+            </label>
+            <input
+              type="text"
+              id="goal_score"
+              name="goal_score"
+              value={formData.goal_score}
+              onChange={handleChange}
+              placeholder="e.g. 2-1"
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">Format as "HomeGoals-AwayGoals" (e.g., 2-1)</p>
+          </div>
+          
+          <div>
+            <label htmlFor="results" className="block text-sm font-medium text-gray-700 mb-2">
+              Match Result
+            </label>
+            <select
+              id="results"
+              name="results"
+              value={formData.results}
+              onChange={handleChange}
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="N/A">Not Played Yet</option>
+              <option value="WIN">Home Team Won</option>
+              <option value="LOSS">Away Team Won</option>
+              <option value="DRAW">Draw</option>
+            </select>
+          </div>
+          
+
         </div>
         
         {/* Venue Selection */}

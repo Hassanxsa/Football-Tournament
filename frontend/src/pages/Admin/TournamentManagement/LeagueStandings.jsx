@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { tournamentService } from '../../services/api';
+import { useParams, Link } from 'react-router-dom';
 
 // Mock data for standings
 const generateMockStandings = (tournamentId) => {
@@ -61,8 +60,8 @@ const getMockTournament = (id) => ({
   team_count: 10
 });
 
-const LeagueStandings = () => {
-  const { id } = useParams(); // Tournament ID
+const AdminLeagueStandings = () => {
+  const { trId } = useParams(); // Tournament ID
   const [standings, setStandings] = useState([]);
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -74,8 +73,8 @@ const LeagueStandings = () => {
     const timer = setTimeout(() => {
       try {
         // Use mock data instead of API calls
-        const mockTournament = getMockTournament(id);
-        const mockStandings = generateMockStandings(id);
+        const mockTournament = getMockTournament(trId);
+        const mockStandings = generateMockStandings(trId);
         
         setTournament(mockTournament);
         setStandings(mockStandings);
@@ -88,7 +87,7 @@ const LeagueStandings = () => {
     }, 800); // Simulate network delay
     
     return () => clearTimeout(timer);
-  }, [id]);
+  }, [trId]);
 
   const handleRecalculateStandings = () => {
     if (recalculatingStandings) return;
@@ -98,16 +97,11 @@ const LeagueStandings = () => {
     // Simulate recalculation with a delay
     setTimeout(() => {
       // Generate new mock standings after "recalculation"
-      const refreshedStandings = generateMockStandings(id);
+      const refreshedStandings = generateMockStandings(trId);
       setStandings(refreshedStandings);
       setRecalculatingStandings(false);
     }, 1500);
   };
-  
-  // For development/testing - log to console when component mounts
-  useEffect(() => {
-    console.log('LeagueStandings component mounted for tournament ID:', id);
-  }, []);
 
   if (loading) {
     return (
@@ -129,9 +123,20 @@ const LeagueStandings = () => {
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          {tournament?.tr_name} - League Standings
-        </h1>
+        <div>
+          <Link 
+            to={`/admin/tournaments/${trId}/matches`}
+            className="text-blue-600 hover:text-blue-800 mb-2 inline-flex items-center"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Back to Matches
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-800">
+            {tournament?.tr_name} - League Standings
+          </h1>
+        </div>
         <button
           onClick={handleRecalculateStandings}
           disabled={recalculatingStandings}
@@ -172,7 +177,9 @@ const LeagueStandings = () => {
                     {team.position}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {team.team_name}
+                    <Link to={`/teams/${team.team_id}`} className="hover:text-blue-600">
+                      {team.team_name}
+                    </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                     {team.played}
@@ -222,4 +229,4 @@ const LeagueStandings = () => {
   );
 };
 
-export default LeagueStandings;
+export default AdminLeagueStandings;

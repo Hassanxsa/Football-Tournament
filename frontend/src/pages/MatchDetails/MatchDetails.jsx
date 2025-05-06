@@ -134,8 +134,8 @@ const MatchDetails = () => {
   };
 
   // Group goals by team
-  const team1Goals = goalDetails.filter(goal => goal.team_id === match.team_id1);
-  const team2Goals = goalDetails.filter(goal => goal.team_id === match.team_id2);
+  const team1Goals = Array.isArray(goalDetails) ? goalDetails.filter(goal => goal.team_id === match.team_id1) : [];
+  const team2Goals = Array.isArray(goalDetails) ? goalDetails.filter(goal => goal.team_id === match.team_id2) : [];
 
   return (
     <div className="min-h-screen">
