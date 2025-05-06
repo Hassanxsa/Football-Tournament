@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { tournamentService, matchService } from '../../../services/api';
 
 const MatchList = () => {
+  const { trId } = useParams(); // If we're showing matches for a specific tournament
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tournamentFilter, setTournamentFilter] = useState('');
+  const [error, setError] = useState(null);
+  const [tournamentFilter, setTournamentFilter] = useState(trId || '');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -12,288 +15,162 @@ const MatchList = () => {
   const [tournaments, setTournaments] = useState([]);
 
   useEffect(() => {
-    // Simulate API call to fetch matches and tournaments
-    setTimeout(() => {
-      // Dummy tournaments data
-      const tournamentsData = [
-        { tr_id: 1, tr_name: 'Faculty Tournament' },
-        { tr_id: 2, tr_name: 'Open Tournament' },
-        { tr_id: 3, tr_name: 'Student Tournament' }
-      ];
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
       
-      // Dummy matches data
-      const matchesData = [
-        { 
-          match_id: 1001, 
-          match_no: 1, 
-          tr_id: 1, 
-          tournament_name: 'Faculty Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-11', 
-          team1_id: 1214, 
-          team1_name: 'CCM', 
-          team1_score: 3, 
-          team2_id: 1215,
-          team2_name: 'KBS',
-          team2_score: 1,
-          venue_id: 1,
-          venue_name: 'Stadium 1',
-          status: 'completed'
-        },
-        { 
-          match_id: 1002, 
-          match_no: 2, 
-          tr_id: 1, 
-          tournament_name: 'Faculty Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-12', 
-          team1_id: 1216, 
-          team1_name: 'CEP', 
-          team1_score: 2, 
-          team2_id: 1217,
-          team2_name: 'CPG',
-          team2_score: 2,
-          venue_id: 2,
-          venue_name: 'Stadium 2',
-          status: 'completed'
-        },
-        { 
-          match_id: 1003, 
-          match_no: 3, 
-          tr_id: 1, 
-          tournament_name: 'Faculty Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-15', 
-          team1_id: 1214, 
-          team1_name: 'CCM', 
-          team1_score: 2, 
-          team2_id: 1216,
-          team2_name: 'CEP',
-          team2_score: 0,
-          venue_id: 1,
-          venue_name: 'Stadium 1',
-          status: 'completed'
-        },
-        { 
-          match_id: 1004, 
-          match_no: 4, 
-          tr_id: 2, 
-          tournament_name: 'Open Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-16', 
-          team1_id: 1214, 
-          team1_name: 'CCM', 
-          team1_score: 1, 
-          team2_id: 1218,
-          team2_name: 'CIE',
-          team2_score: 0,
-          venue_id: 3,
-          venue_name: 'Stadium 3',
-          status: 'completed'
-        },
-        { 
-          match_id: 1005, 
-          match_no: 5, 
-          tr_id: 2, 
-          tournament_name: 'Open Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-18', 
-          team1_id: 1215, 
-          team1_name: 'KBS', 
-          team1_score: 3, 
-          team2_id: 1219,
-          team2_name: 'MGE',
-          team2_score: 1,
-          venue_id: 1,
-          venue_name: 'Stadium 1',
-          status: 'completed'
-        },
-        { 
-          match_id: 1006, 
-          match_no: 6, 
-          tr_id: 3, 
-          tournament_name: 'Student Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-19', 
-          team1_id: 1217, 
-          team1_name: 'CPG', 
-          team1_score: 2, 
-          team2_id: 1218,
-          team2_name: 'CIE',
-          team2_score: 3,
-          venue_id: 2,
-          venue_name: 'Stadium 2',
-          status: 'completed'
-        },
-        { 
-          match_id: 1007, 
-          match_no: 7, 
-          tr_id: 1, 
-          tournament_name: 'Faculty Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-25', 
-          team1_id: 1218, 
-          team1_name: 'CIE', 
-          team1_score: null, 
-          team2_id: 1219,
-          team2_name: 'MGE',
-          team2_score: null,
-          venue_id: 3,
-          venue_name: 'Stadium 3',
-          status: 'scheduled'
-        },
-        { 
-          match_id: 1008, 
-          match_no: 8, 
-          tr_id: 2, 
-          tournament_name: 'Open Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-26', 
-          team1_id: 1216, 
-          team1_name: 'CEP', 
-          team1_score: null, 
-          team2_id: 1217,
-          team2_name: 'CPG',
-          team2_score: null,
-          venue_id: 1,
-          venue_name: 'Stadium 1',
-          status: 'scheduled'
-        },
-        { 
-          match_id: 1009, 
-          match_no: 9, 
-          tr_id: 3, 
-          tournament_name: 'Student Tournament',
-          play_stage: 'G', 
-          play_date: '2023-03-30', 
-          team1_id: 1214, 
-          team1_name: 'CCM', 
-          team1_score: null, 
-          team2_id: 1215,
-          team2_name: 'KBS',
-          team2_score: null,
-          venue_id: 2,
-          venue_name: 'Stadium 2',
-          status: 'scheduled'
-        },
-        { 
-          match_id: 1010, 
-          match_no: 10, 
-          tr_id: 1, 
-          tournament_name: 'Faculty Tournament',
-          play_stage: 'G', 
-          play_date: '2023-04-02', 
-          team1_id: 1214, 
-          team1_name: 'CCM', 
-          team1_score: null, 
-          team2_id: 1219,
-          team2_name: 'MGE',
-          team2_score: null,
-          venue_id: 3,
-          venue_name: 'Stadium 3',
-          status: 'scheduled'
+      try {
+        // Fetch tournaments list
+        const tournamentsData = await tournamentService.getAllTournaments();
+        setTournaments(tournamentsData);
+        
+        // Fetch matches
+        let matchesData = [];
+        if (trId) {
+          // If tournament ID is provided, fetch matches for that tournament
+          matchesData = await matchService.getTournamentMatches(trId);
+        } else {
+          // Fetch all matches across tournaments
+          matchesData = [];
+          for (const tournament of tournamentsData) {
+            try {
+              const tournamentMatches = await matchService.getTournamentMatches(tournament.tr_id);
+              matchesData.push(...tournamentMatches);
+            } catch (err) {
+              console.error(`Error fetching matches for tournament ${tournament.tr_id}:`, err);
+            }
+          }
         }
-      ];
-      
-      setTournaments(tournamentsData);
-      setMatches(matchesData);
-      setLoading(false);
-    }, 500);
-  }, []);
-
-  // Filter matches based on filters
-  const filteredMatches = matches.filter(match => {
-    const matchesTournament = tournamentFilter ? match.tr_id === parseInt(tournamentFilter) : true;
-    const matchesStatus = statusFilter ? match.status === statusFilter : true;
-    const matchesSearch = searchTerm ? 
-      match.team1_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      match.team2_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.venue_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.tournament_name.toLowerCase().includes(searchTerm.toLowerCase()) : true;
+        
+        setMatches(matchesData);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load matches. Please try again.');
+        setLoading(false);
+      }
+    };
     
-    return matchesTournament && matchesStatus && matchesSearch;
+    fetchData();
+  }, [trId]);
+
+  // Filter matches based on tournament, status, and search term
+  const filteredMatches = matches.filter(match => {
+    // Filter by tournament
+    if (tournamentFilter && match.tr_id !== parseInt(tournamentFilter)) {
+      return false;
+    }
+    
+    // Filter by status (if implemented in your data model)
+    if (statusFilter && match.status !== statusFilter) {
+      return false;
+    }
+    
+    // Filter by search term (team names, venue, etc.)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      return (
+        match.team1_name?.toLowerCase().includes(term) ||
+        match.team2_name?.toLowerCase().includes(term) ||
+        match.venue_name?.toLowerCase().includes(term) ||
+        (match.tournament_name && match.tournament_name.toLowerCase().includes(term))
+      );
+    }
+    
+    return true;
   });
 
-  // Format date
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+  // Handle tournament filter change
+  const handleTournamentFilterChange = (e) => {
+    setTournamentFilter(e.target.value);
   };
-
+  
+  // Handle status filter change
+  const handleStatusFilterChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+  
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+  
+  // Format date for display
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+  
+  // Get stage name from code
+  const getStageName = (stageCode) => {
+    // Since we're only using a points league system, all matches are league matches
+    return 'League Match';
+  };
+  
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
-
+  
+  if (error) {
+    return (
+      <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+        <p className="font-bold">Error</p>
+        <p>{error}</p>
+      </div>
+    );
+  }
+  
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Match Management</h1>
-          <p className="text-gray-600">Schedule and manage matches across all tournaments</p>
-        </div>
-        <Link 
-          to="/admin/matches/create" 
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">{trId ? 'Tournament Matches' : 'All Matches'}</h1>
+        <Link
+          to={trId ? `/admin/tournaments/${trId}/matches/new` : "/admin/matches/new"}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
         >
           Schedule New Match
         </Link>
       </div>
-
-      {/* Breadcrumb navigation */}
-      <nav className="mb-6">
-        <ol className="flex text-sm text-gray-500">
-          <li className="mr-1">
-            <Link to="/admin" className="text-blue-600 hover:text-blue-800">Dashboard</Link> /
-          </li>
-          <li className="ml-1">Matches</li>
-        </ol>
-      </nav>
-
+      
       {/* Filters */}
-      <div className="mb-6 bg-white shadow-md rounded-lg overflow-hidden p-4">
+      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-            <input
-              type="text"
-              id="search"
-              placeholder="Search teams, venues..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {/* Tournament Filter (only show if not already filtered by tournament) */}
+          {!trId && (
+            <div>
+              <label htmlFor="tournamentFilter" className="block text-sm font-medium text-gray-700 mb-1">
+                Tournament
+              </label>
+              <select
+                id="tournamentFilter"
+                value={tournamentFilter}
+                onChange={handleTournamentFilterChange}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Tournaments</option>
+                {tournaments.map(tournament => (
+                  <option key={tournament.tr_id} value={tournament.tr_id}>
+                    {tournament.tr_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           
+          {/* Status Filter */}
           <div>
-            <label htmlFor="tournament" className="block text-sm font-medium text-gray-700 mb-1">Tournament</label>
+            <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
             <select
-              id="tournament"
-              value={tournamentFilter}
-              onChange={(e) => setTournamentFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Tournaments</option>
-              {tournaments.map(tournament => (
-                <option key={tournament.tr_id} value={tournament.tr_id}>
-                  {tournament.tr_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              id="status"
+              id="statusFilter"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={handleStatusFilterChange}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Statuses</option>
               <option value="scheduled">Scheduled</option>
@@ -301,118 +178,87 @@ const MatchList = () => {
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
+          
+          {/* Search */}
+          <div>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+              Search
+            </label>
+            <input
+              type="text"
+              id="search"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              placeholder="Search teams, venues..."
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
         </div>
       </div>
-
-      {/* Match List */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Match Info
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tournament
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Teams
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Score
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Venue
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredMatches.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                    No matches found matching your criteria
-                  </td>
-                </tr>
-              ) : (
-                filteredMatches.map(match => (
-                  <tr key={match.match_id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Match #{match.match_no}</div>
-                      <div className="text-xs text-gray-500">{formatDate(match.play_date)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link to={`/admin/tournaments/${match.tr_id}`} className="text-sm text-blue-600 hover:text-blue-900">
-                        {match.tournament_name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col text-sm text-gray-900">
-                        <Link to={`/admin/teams/${match.team1_id}`} className="text-blue-600 hover:text-blue-900">
-                          {match.team1_name}
-                        </Link> 
-                        <span className="text-xs text-gray-500 my-1">vs</span>
-                        <Link to={`/admin/teams/${match.team2_id}`} className="text-blue-600 hover:text-blue-900">
-                          {match.team2_name}
-                        </Link>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {match.status === 'completed' ? (
-                        <span className="font-medium">{match.team1_score} - {match.team2_score}</span>
-                      ) : (
-                        <span className="text-gray-400">--</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link to={`/admin/venues/${match.venue_id}`} className="text-sm text-green-600 hover:text-green-900">
-                        {match.venue_name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${match.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                          match.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                          'bg-red-100 text-red-800'}`}>
-                        {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-3">
-                        <Link 
-                          to={`/admin/matches/${match.match_id}/edit`} 
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          Edit
-                        </Link>
-                        {match.status === 'scheduled' && (
-                          <Link 
-                            to={`/admin/matches/${match.match_id}/record`} 
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            Record Result
-                          </Link>
-                        )}
-                        {match.status === 'scheduled' && (
-                          <button className="text-red-600 hover:text-red-900">
-                            Cancel
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      
+      {/* Matches List */}
+      {filteredMatches.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No matches found.</p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <ul className="divide-y divide-gray-200">
+            {filteredMatches.map((match) => (
+              <li key={match.match_no}>
+                <div className="px-4 py-4 sm:px-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col md:flex-row md:items-center">
+                      <p className="text-sm font-medium text-blue-600 truncate mr-2">
+                        <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded mr-2">
+                          {getStageName(match.play_stage)}
+                        </span>
+                        {formatDate(match.play_date)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <span className="font-medium">Venue:</span> {match.venue_name}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Link
+                        to={`/admin/matches/${match.match_no}`}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        to={`/admin/matches/${match.match_no}/edit`}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        Edit
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="mt-2 sm:flex sm:justify-between">
+                    <div className="sm:flex sm:items-center bg-gray-50 p-3 rounded-md w-full">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center w-5/12 justify-end">
+                          <span className="text-lg font-bold">{match.team1_name}</span>
+                        </div>
+                        
+                        <div className="flex items-center justify-center w-2/12">
+                          <div className="bg-white px-4 py-2 rounded-md shadow-sm">
+                            <span className="text-xl font-bold">{match.goal_score || '0-0'}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center w-5/12">
+                          <span className="text-lg font-bold">{match.team2_name}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

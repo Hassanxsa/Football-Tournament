@@ -29,6 +29,33 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Middleware to check if user is an admin
+const ensureAdmin = async (req, res, next) => {
+  console.log('checkAdmin middleware called');
+  console.log('User from request:', req.user);
+  
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  
+  try {
+    console.log('Checking admin status for user ID:', req.user.id);
+    const result = await query('SELECT user_type FROM users WHERE id = $1', [req.user.id]);
+    console.log('Database query result:', result.rows);
+    
+    if (result.rows.length > 0 && result.rows[0].user_type === 'admin') {
+      console.log('User is admin according to database');
+      return next();
+    } else {
+      console.log('User is NOT admin according to database');
+      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+    }
+  } catch (err) {
+    console.error('Error in admin check middleware:', err);
+    return res.status(500).json({ message: 'Server error during admin verification' });
+  }
+};
+
 // signup route
 
 app.post('/api/signup', async (req, res) => {
@@ -1610,13 +1637,390 @@ app.post(
     }
   }
 );
+// =================== MATCH MANAGEMENT ENDPOINTS ===================
 
+// Get all matches for a tournament
+app.get('/api/tournaments/:trId/matches', async (req, res) => {
+  const { trId } = req.params;
+  
+  try {
+    // Join match_played with team and venue tables to get team names and venue name
+    const result = await query(
+      `SELECT mp.match_no, mp.play_stage, mp.play_date, 
+        mp.team_id1, t1.team_name as team1_name, 
+        mp.team_id2, t2.team_name as team2_name, 
+        mp.results, mp.goal_score, 
+        mp.venue_id, v.venue_name, 
+        mp.audience, mp.player_of_match
+      FROM match_played mp
+      JOIN team t1 ON mp.team_id1 = t1.team_id
+      JOIN team t2 ON mp.team_id2 = t2.team_id
+      JOIN venue v ON mp.venue_id = v.venue_id
+      WHERE mp.team_id1 IN (SELECT team_id FROM tournament_team WHERE tr_id = $1)
+         OR mp.team_id2 IN (SELECT team_id FROM tournament_team WHERE tr_id = $1)
+      ORDER BY mp.play_date DESC, mp.match_no DESC`,
+      [trId]
+    );
+    
+    // Format the results for better display
+    const formattedMatches = result.rows.map(match => ({
+      ...match,
+      play_date: match.play_date, // Keep ISO format for frontend processing
+      formatted_date: new Date(match.play_date).toLocaleDateString(),
+      score: match.goal_score,
+    }));
+    
+    return res.json(formattedMatches);
+  } catch (err) {
+    console.error('Error fetching tournament matches:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
+// Get a specific match details
+app.get('/api/matches/:matchNo', async (req, res) => {
+  const { matchNo } = req.params;
+  
+  try {
+    // Get main match information
+    const matchQuery = await query(
+      `SELECT mp.match_no, mp.play_stage, mp.play_date, 
+        mp.team_id1, t1.team_name as team1_name, 
+        mp.team_id2, t2.team_name as team2_name, 
+        mp.results, mp.goal_score, 
+        mp.venue_id, v.venue_name, 
+        mp.audience, mp.player_of_match, mp.decided_by, 
+        mp.stop1_sec, mp.stop2_sec
+      FROM match_played mp
+      JOIN team t1 ON mp.team_id1 = t1.team_id
+      JOIN team t2 ON mp.team_id2 = t2.team_id
+      JOIN venue v ON mp.venue_id = v.venue_id
+      WHERE mp.match_no = $1`,
+      [matchNo]
+    );
+    
+    if (matchQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+    
+    const match = matchQuery.rows[0];
+    
+    // Get match details for both teams
+    const detailsQuery = await query(
+      `SELECT * FROM match_details WHERE match_no = $1`,
+      [matchNo]
+    );
+    
+    // Get match captains
+    const captainsQuery = await query(
+      `SELECT mc.team_id, mc.player_captain, COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as captain_name
+      FROM match_captain mc
+      LEFT JOIN player p ON mc.player_captain = p.player_id
+      LEFT JOIN users u ON p.player_id = u.id
+      WHERE mc.match_no = $1`,
+      [matchNo]
+    );
+    
+    // Get goals in this match
+    const goalsQuery = await query(
+      `SELECT gd.goal_id, gd.team_id, gd.player_id, 
+        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as player_name,
+        gd.goal_time, gd.goal_type, gd.play_stage, gd.goal_schedule, gd.goal_half
+      FROM goal_details gd
+      LEFT JOIN player p ON gd.player_id = p.player_id
+      LEFT JOIN users u ON p.player_id = u.id
+      WHERE gd.match_no = $1
+      ORDER BY gd.goal_time`,
+      [matchNo]
+    );
+    
+    // Get player bookings in this match
+    const bookingsQuery = await query(
+      `SELECT pb.player_id, pb.team_id, 
+        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as player_name,
+        pb.booking_time, pb.sent_off, pb.play_schedule, pb.play_half
+      FROM player_booked pb
+      LEFT JOIN player p ON pb.player_id = p.player_id
+      LEFT JOIN users u ON p.player_id = u.id
+      WHERE pb.match_no = $1
+      ORDER BY pb.booking_time`,
+      [matchNo]
+    );
+    
+    // Combine all data
+    const matchDetails = {
+      ...match,
+      details: detailsQuery.rows,
+      captains: captainsQuery.rows,
+      goals: goalsQuery.rows,
+      bookings: bookingsQuery.rows
+    };
+    
+    return res.json(matchDetails);
+  } catch (err) {
+    console.error('Error fetching match details:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
+// Create a new match for a tournament
+app.post('/api/tournaments/:trId/matches', passport.authenticate('jwt', { session: false }), ensureAdmin, async (req, res) => {
+  const { trId } = req.params;
+  const { play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec } = req.body;
 
+  try {
+    const tournamentExists = await query('SELECT * FROM tournament WHERE tr_id = $1', [trId]);
+    if (tournamentExists.rows.length === 0) {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
 
+    // Check that both teams exist in the tournament
+    const team1Check = await query('SELECT * FROM tournament_team WHERE tr_id = $1 AND team_id = $2', [trId, team_id1]);
+    const team2Check = await query('SELECT * FROM tournament_team WHERE tr_id = $1 AND team_id = $2', [trId, team_id2]);
 
+    if (team1Check.rows.length === 0 || team2Check.rows.length === 0) {
+      return res.status(400).json({ message: 'One or both teams are not participating in this tournament' });
+    }
 
+    // Get the next match_no
+    const maxMatchNoResult = await query('SELECT MAX(match_no) FROM match_played');
+    const maxMatchNo = maxMatchNoResult.rows[0].max || 0;
+    const newMatchNo = maxMatchNo + 1;
+
+    // Insert the new match
+    const newMatch = await query(
+      'INSERT INTO match_played (match_no, tr_id, match_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *',
+      [newMatchNo, trId, play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec]
+    );
+
+    // If match has a score (not a future match), update league standings
+    if (goal_score && goal_score !== '0-0' && goal_score !== 'N/A') {
+      await updateLeagueStandings(trId);
+    }
+
+    res.status(201).json(newMatch.rows[0]);
+  } catch (err) {
+    console.error('Error creating match:', err);
+    res.status(500).json({ message: 'Failed to create match', error: err.message });
+  }
+});
+
+// Update a match
+app.put('/api/matches/:matchNo', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { matchNo } = req.params;
+  const { play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec } = req.body;
+
+  try {
+    // Check if match exists
+    const matchExists = await query('SELECT * FROM match_played WHERE match_no = $1', [matchNo]);
+    if (matchExists.rows.length === 0) {
+      return res.status(404).json({ message: 'Match not found' });
+    }
+
+    // Get the tournament ID for this match
+    const trId = matchExists.rows[0].tr_id;
+
+    // Update the match
+    const updatedMatch = await query(
+      'UPDATE match_played SET match_date = $1, team_id1 = $2, team_id2 = $3, play_stage = $4, venue_id = $5, results = $6, decided_by = $7, goal_score = $8, audience = $9, player_of_match = $10, stop1_sec = $11, stop2_sec = $12 WHERE match_no = $13 RETURNING *',
+      [play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec, matchNo]
+    );
+
+    // If match has a score, update league standings
+    if (goal_score && goal_score !== '0-0' && goal_score !== 'N/A') {
+      await updateLeagueStandings(trId);
+    }
+
+    res.json(updatedMatch.rows[0]);
+  } catch (err) {
+    console.error('Error updating match:', err);
+    res.status(500).json({ message: 'Failed to update match', error: err.message });
+  }
+});
+
+// Function to update league standings for a tournament
+async function updateLeagueStandings(tournamentId) {
+  try {
+    // Get all teams in this tournament
+    const teamsResult = await query(
+      'SELECT team_id FROM tournament_team WHERE tr_id = $1',
+      [tournamentId]
+    );
+
+    // For each team, calculate their statistics
+    for (const team of teamsResult.rows) {
+      const teamId = team.team_id;
+      
+      // Get all matches for this team in this tournament
+      const matchesResult = await query(
+        `SELECT * FROM match_played 
+         WHERE tr_id = $1 AND (team_id1 = $2 OR team_id2 = $2) 
+         AND goal_score IS NOT NULL AND goal_score != '0-0' AND goal_score != 'N/A'`,
+        [tournamentId, teamId]
+      );
+      
+      let played = 0;
+      let won = 0;
+      let drawn = 0;
+      let lost = 0;
+      let goalsFor = 0;
+      let goalsAgainst = 0;
+      
+      // Calculate statistics based on matches
+      matchesResult.rows.forEach(match => {
+        played++;
+        
+        // Parse goal score (format: '2-1')
+        const scores = match.goal_score.split('-');
+        const score1 = parseInt(scores[0]);
+        const score2 = parseInt(scores[1]);
+        
+        // Determine if this team is team1 or team2
+        if (match.team_id1 === teamId) {
+          // This team is team1
+          goalsFor += score1;
+          goalsAgainst += score2;
+          
+          if (score1 > score2) won++;
+          else if (score1 < score2) lost++;
+          else drawn++;
+        } else {
+          // This team is team2
+          goalsFor += score2;
+          goalsAgainst += score1;
+          
+          if (score2 > score1) won++;
+          else if (score2 < score1) lost++;
+          else drawn++;
+        }
+      });
+      
+      // Calculate points (3 for win, 1 for draw)
+      const points = (won * 3) + drawn;
+      const goalDifference = goalsFor - goalsAgainst;
+      
+      // Check if standing exists for this team and tournament
+      const standingExists = await query(
+        'SELECT * FROM league_standings WHERE tr_id = $1 AND team_id = $2',
+        [tournamentId, teamId]
+      );
+      
+      if (standingExists.rows.length > 0) {
+        // Update existing standing
+        await query(
+          `UPDATE league_standings 
+           SET played = $1, won = $2, drawn = $3, lost = $4, 
+               goals_for = $5, goals_against = $6, goal_difference = $7, points = $8 
+           WHERE tr_id = $9 AND team_id = $10`,
+          [played, won, drawn, lost, goalsFor, goalsAgainst, goalDifference, points, tournamentId, teamId]
+        );
+      } else {
+        // Insert new standing
+        await query(
+          `INSERT INTO league_standings 
+           (tr_id, team_id, played, won, drawn, lost, goals_for, goals_against, goal_difference, points) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [tournamentId, teamId, played, won, drawn, lost, goalsFor, goalsAgainst, goalDifference, points]
+        );
+      }
+    }
+    
+    // Update positions based on points and goal difference
+    await query(
+      `WITH ranked_standings AS (
+         SELECT 
+           standing_id, 
+           ROW_NUMBER() OVER (PARTITION BY tr_id ORDER BY points DESC, goal_difference DESC, goals_for DESC) as new_position 
+         FROM league_standings 
+         WHERE tr_id = $1
+       )
+       UPDATE league_standings ls 
+       SET position = rs.new_position 
+       FROM ranked_standings rs 
+       WHERE ls.standing_id = rs.standing_id`,
+      [tournamentId]
+    );
+    
+    console.log(`Updated league standings for tournament ${tournamentId}`);
+    return true;
+  } catch (err) {
+    console.error('Error updating league standings:', err);
+    return false;
+  }
+}
+
+// Endpoint to get league standings for a tournament
+app.get('/api/tournaments/:trId/standings', async (req, res) => {
+  const { trId } = req.params;
+  
+  try {
+    // Get standings with team names
+    const standingsResult = await query(
+      `SELECT ls.*, t.team_name 
+       FROM league_standings ls 
+       JOIN team t ON ls.team_id = t.team_id 
+       WHERE ls.tr_id = $1 
+       ORDER BY ls.position`,
+      [trId]
+    );
+    
+    // If no standings found, try to calculate them first
+    if (standingsResult.rows.length === 0) {
+      await updateLeagueStandings(trId);
+      
+      // Try to get standings again
+      const updatedStandingsResult = await query(
+        `SELECT ls.*, t.team_name 
+         FROM league_standings ls 
+         JOIN team t ON ls.team_id = t.team_id 
+         WHERE ls.tr_id = $1 
+         ORDER BY ls.position`,
+        [trId]
+      );
+      
+      res.json(updatedStandingsResult.rows);
+    } else {
+      res.json(standingsResult.rows);
+    }
+  } catch (err) {
+    console.error('Error fetching standings:', err);
+    res.status(500).json({ message: 'Failed to fetch standings', error: err.message });
+  }
+});
+
+// Endpoint to manually trigger standings recalculation
+app.post('/api/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), ensureAdmin, async (req, res) => {
+  const { trId } = req.params;
+  
+  try {
+    const success = await updateLeagueStandings(trId);
+    if (success) {
+      res.json({ message: 'Standings recalculated successfully' });
+    } else {
+      res.status(500).json({ message: 'Failed to recalculate standings' });
+    }
+  } catch (err) {
+    console.error('Error recalculating standings:', err);
+    res.status(500).json({ message: 'Failed to recalculate standings', error: err.message });
+  }
+});
+
+// Get venues for match dropdown
+app.get('/api/venues', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT venue_id, venue_name, venue_capacity 
+       FROM venue 
+       WHERE venue_status = 'A' 
+       ORDER BY venue_name`
+    );
+    
+    return res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching venues:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 
 
@@ -1874,11 +2278,61 @@ app.delete(
   }
 );
 
+// Endpoint to get league standings for a tournament
+app.get('/api/tournaments/:trId/standings', async (req, res) => {
+  const { trId } = req.params;
+  
+  try {
+    // Get standings with team names
+    const standingsResult = await query(
+      `SELECT ls.*, t.team_name 
+       FROM league_standings ls 
+       JOIN team t ON ls.team_id = t.team_id 
+       WHERE ls.tr_id = $1 
+       ORDER BY ls.position`,
+      [trId]
+    );
+    
+    // If no standings found, try to calculate them first
+    if (standingsResult.rows.length === 0) {
+      await updateLeagueStandings(trId);
+      
+      // Try to get standings again
+      const updatedStandingsResult = await query(
+        `SELECT ls.*, t.team_name 
+         FROM league_standings ls 
+         JOIN team t ON ls.team_id = t.team_id 
+         WHERE ls.tr_id = $1 
+         ORDER BY ls.position`,
+        [trId]
+      );
+      
+      res.json(updatedStandingsResult.rows);
+    } else {
+      res.json(standingsResult.rows);
+    }
+  } catch (err) {
+    console.error('Error fetching standings:', err);
+    res.status(500).json({ message: 'Failed to fetch standings', error: err.message });
+  }
+});
 
-
-
-
-
+// Endpoint to manually trigger standings recalculation
+app.post('/api/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), ensureAdmin, async (req, res) => {
+  const { trId } = req.params;
+  
+  try {
+    const success = await updateLeagueStandings(trId);
+    if (success) {
+      res.json({ message: 'Standings recalculated successfully' });
+    } else {
+      res.status(500).json({ message: 'Failed to recalculate standings' });
+    }
+  } catch (err) {
+    console.error('Error recalculating standings:', err);
+    res.status(500).json({ message: 'Failed to recalculate standings', error: err.message });
+  }
+});
 
 // Start the server
 app.listen(PORT, () => {

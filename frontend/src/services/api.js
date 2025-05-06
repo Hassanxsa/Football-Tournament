@@ -152,6 +152,17 @@ export const tournamentService = {
   deleteTournament: async (id) => {
     const response = await api.delete(`/api/admin/tournaments/${id}`);
     return response.data;
+  },
+  
+  // League Standings
+  getTournamentStandings: async (tournamentId) => {
+    const response = await api.get(`/api/tournaments/${tournamentId}/standings`);
+    return response.data;
+  },
+  
+  recalculateStandings: async (tournamentId) => {
+    const response = await api.post(`/api/tournaments/${tournamentId}/recalculate-standings`);
+    return response.data;
   }
 };
 
@@ -306,11 +317,37 @@ export const matchService = {
     return response.data;
   },
   
+  // Get match details (enhanced)
   getMatchDetails: async (id) => {
-    const response = await api.get(`/api/matches/${id}/details`);
+    const response = await api.get(`/api/matches/${id}`);
     return response.data;
   },
   
+  // Get all matches for a tournament
+  getTournamentMatches: async (tournamentId) => {
+    const response = await api.get(`/api/tournaments/${tournamentId}/matches`);
+    return response.data;
+  },
+  
+  // Create a new match in a tournament (admin only)
+  createMatch: async (tournamentId, matchData) => {
+    const response = await api.post(`/api/tournaments/${tournamentId}/matches`, matchData);
+    return response.data;
+  },
+  
+  // Update match details (admin only)
+  updateMatch: async (matchId, matchData) => {
+    const response = await api.put(`/api/matches/${matchId}`, matchData);
+    return response.data;
+  },
+  
+  // Get venues for match creation/editing
+  getVenues: async () => {
+    const response = await api.get('/api/venues');
+    return response.data;
+  },
+  
+  // Legacy endpoints - may be replaced with the new endpoints above
   getGoalDetails: async (id) => {
     const response = await api.get(`/api/matches/${id}/goals`);
     return response.data;

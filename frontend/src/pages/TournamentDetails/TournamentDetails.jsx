@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { tournamentService } from '../../services/api';
+import LeagueStandings from './LeagueStandings';
 
 const TournamentDetails = () => {
   const { id } = useParams();
@@ -143,25 +144,31 @@ const TournamentDetails = () => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Tournament Tabs */}
         <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button 
+          <div className="border-b border-gray-200 mb-6">
+            <nav className="-mb-px flex space-x-6">
+              <button
                 onClick={() => setActiveTab('overview')}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                className={`py-4 px-1 ${activeTab === 'overview' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
               >
                 Overview
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('matches')}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'matches' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                className={`py-4 px-1 ${activeTab === 'matches' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
               >
                 Matches
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('teams')}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'teams' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                className={`py-4 px-1 ${activeTab === 'teams' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
               >
                 Teams
+              </button>
+              <button
+                onClick={() => setActiveTab('standings')}
+                className={`py-4 px-1 ${activeTab === 'standings' ? 'border-b-2 border-blue-500 text-blue-600' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                Standings
               </button>
             </nav>
           </div>
@@ -441,6 +448,10 @@ const TournamentDetails = () => {
               </div>
             ))}
           </div>
+        )}
+        
+        {activeTab === 'standings' && (
+          <LeagueStandings />
         )}
       </div>
     </div>
