@@ -15,10 +15,6 @@ const router = express.Router();
 
 
 
-
-
-
-
 router.get(
   '/',
   passport.authenticate('jwt', { session: false }),
@@ -238,6 +234,78 @@ router.get(
     } catch (err) {
       console.error('GET /api/teams/:id/tournaments error', err);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+/////////////////////// Team Join Requests ///////////////////////
+// team request page 
+router.get(
+  '/join-request',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    try {
+      // 1) Fetch all teams
+      const teamsQ = `
+        SELECT team_id, team_name
+        FROM public.team
+        ORDER BY team_name;
+      `;
+
+      // 2) Fetch all positions
+      const positionsQ = `
+        SELECT position_id, position_desc
+        FROM public.playing_position
+        ORDER BY position_desc;
+      `;
+
+      const [
+        { rows: teams },
+        { rows: positions }
+      ] = await Promise.all([
+        query(teamsQ),
+        query(positionsQ)
+      ]);
+
+      return res.json({ teams, positions });
+    } catch (err) {
+      console.error('Error fetching join-request metadata:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+// Join a team request
+// This route allows a player to send a join request to a team
+router.post(
+  '/join-request',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const player_id = req.user.id;           // from JWT
+    const { team_id, requested_position } = req.body;
+
+    if (!team_id || !requested_position) {
+      return res
+        .status(400)
+        .json({ error: 'team_id and requested_position are required' });
+    }
+
+    try {
+      const insertSql = `
+        INSERT INTO public.team_join_requests
+          (player_id, team_id, requested_position)
+        VALUES ($1, $2, $3)
+        RETURNING request_id, status;
+      `;
+      const { rows } = await query(insertSql, [
+        player_id,
+        team_id,
+        requested_position
+      ]);
+      return res.status(201).json(rows[0]);
+    } catch (err) {
+      console.error('Error creating join request:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
   }
 );

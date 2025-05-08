@@ -467,206 +467,19 @@ app.post(
 );
 
 //////////// Join a team route \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-// team request page 
-app.get(
-  '/api/teams/join-request',
-  passport.authenticate('jwt', { session: false }),
-  async (req, res) => {
-    try {
-      // 1) Fetch all teams
-      const teamsQ = `
-        SELECT team_id, team_name
-        FROM public.team
-        ORDER BY team_name;
-      `;
-
-      // 2) Fetch all positions
-      const positionsQ = `
-        SELECT position_id, position_desc
-        FROM public.playing_position
-        ORDER BY position_desc;
-      `;
-
-      const [
-        { rows: teams },
-        { rows: positions }
-      ] = await Promise.all([
-        query(teamsQ),
-        query(positionsQ)
-      ]);
-
-      return res.json({ teams, positions });
-    } catch (err) {
-      console.error('Error fetching join-request metadata:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-);
 
 
 
-// Join a team request
-// This route allows a player to send a join request to a team
-app.post(
-  '/api/teams/join-request',
-  passport.authenticate('jwt', { session: false }),
-  async (req, res) => {
-    const player_id = req.user.id;           // from JWT
-    const { team_id, requested_position } = req.body;
 
-    if (!team_id || !requested_position) {
-      return res
-        .status(400)
-        .json({ error: 'team_id and requested_position are required' });
-    }
 
-    try {
-      const insertSql = `
-        INSERT INTO public.team_join_requests
-          (player_id, team_id, requested_position)
-        VALUES ($1, $2, $3)
-        RETURNING request_id, status;
-      `;
-      const { rows } = await query(insertSql, [
-        player_id,
-        team_id,
-        requested_position
-      ]);
-      return res.status(201).json(rows[0]);
-    } catch (err) {
-      console.error('Error creating join request:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-);
 // =================== MATCH MANAGEMENT ENDPOINTS ===================
 
-// Get all matches for a tournament
-app.get('/api/tournaments/:trId/matches', async (req, res) => {
-  const { trId } = req.params;
-  
-  try {
-    // Join match_played with team and venue tables to get team names and venue name
-    const result = await query(
-      `SELECT mp.match_no, mp.play_stage, mp.play_date, 
-        mp.team_id1, t1.team_name as team1_name, 
-        mp.team_id2, t2.team_name as team2_name, 
-        mp.results, mp.goal_score, 
-        mp.venue_id, v.venue_name, 
-        mp.audience, mp.player_of_match
-      FROM match_played mp
-      JOIN team t1 ON mp.team_id1 = t1.team_id
-      JOIN team t2 ON mp.team_id2 = t2.team_id
-      JOIN venue v ON mp.venue_id = v.venue_id
-      WHERE mp.team_id1 IN (SELECT team_id FROM tournament_team WHERE tr_id = $1)
-         OR mp.team_id2 IN (SELECT team_id FROM tournament_team WHERE tr_id = $1)
-      ORDER BY mp.play_date DESC, mp.match_no DESC`,
-      [trId]
-    );
-    
-    // Format the results for better display
-    const formattedMatches = result.rows.map(match => ({
-      ...match,
-      play_date: match.play_date, // Keep ISO format for frontend processing
-      formatted_date: new Date(match.play_date).toLocaleDateString(),
-      score: match.goal_score,
-    }));
-    
-    return res.json(formattedMatches);
-  } catch (err) {
-    console.error('Error fetching tournament matches:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
-// Get a specific match details
-app.get('/api/matches/:matchNo', async (req, res) => {
-  const { matchNo } = req.params;
-  
-  try {
-    // Get main match information
-    const matchQuery = await query(
-      `SELECT mp.match_no, mp.play_date, 
-        mp.team_id1, t1.team_name as team1_name, 
-        mp.team_id2, t2.team_name as team2_name, 
-        mp.results, mp.goal_score, 
-        mp.venue_id, v.venue_name, 
-        mp.audience, mp.player_of_match, mp.decided_by, 
-        mp.stop1_sec, mp.stop2_sec
-      FROM match_played mp
-      JOIN team t1 ON mp.team_id1 = t1.team_id
-      JOIN team t2 ON mp.team_id2 = t2.team_id
-      JOIN venue v ON mp.venue_id = v.venue_id
-      WHERE mp.match_no = $1`,
-      [matchNo]
-    );
-    
-    if (matchQuery.rows.length === 0) {
-      return res.status(404).json({ error: 'Match not found' });
-    }
-    
-    const match = matchQuery.rows[0];
-    
-    // Get match details for both teams
-    const detailsQuery = await query(
-      `SELECT * FROM match_details WHERE match_no = $1`,
-      [matchNo]
-    );
-    
-    // Get match captains
-    const captainsQuery = await query(
-      `SELECT mc.team_id, mc.player_captain, COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as captain_name
-      FROM match_captain mc
-      LEFT JOIN player p ON mc.player_captain = p.player_id
-      LEFT JOIN users u ON p.player_id = u.id
-      WHERE mc.match_no = $1`,
-      [matchNo]
-    );
-    
-    // Get goals in this match
-    const goalsQuery = await query(
-      `SELECT gd.goal_id, gd.team_id, gd.player_id, 
-        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as player_name,
-        gd.goal_time, gd.goal_type, gd.play_stage, gd.goal_schedule, gd.goal_half
-      FROM goal_details gd
-      LEFT JOIN player p ON gd.player_id = p.player_id
-      LEFT JOIN users u ON p.player_id = u.id
-      WHERE gd.match_no = $1
-      ORDER BY gd.goal_time`,
-      [matchNo]
-    );
-    
-    // Get player bookings in this match
-    const bookingsQuery = await query(
-      `SELECT pb.player_id, pb.team_id, 
-        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as player_name,
-        pb.booking_time, pb.sent_off, pb.play_schedule, pb.play_half
-      FROM player_booked pb
-      LEFT JOIN player p ON pb.player_id = p.player_id
-      LEFT JOIN users u ON p.player_id = u.id
-      WHERE pb.match_no = $1
-      ORDER BY pb.booking_time`,
-      [matchNo]
-    );
-    
-    // Combine all data
-    const matchDetails = {
-      ...match,
-      details: detailsQuery.rows,
-      captains: captainsQuery.rows,
-      goals: goalsQuery.rows,
-      bookings: bookingsQuery.rows
-    };
-    
-    return res.json(matchDetails);
-  } catch (err) {
-    console.error('Error fetching match details:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
+
+
 
 // Create a new match for a tournament
-app.post('/api/tournaments/:trId/matches', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
+app.post('/api/admin/tournaments/:trId/matches', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
   const { trId } = req.params;
   const { play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec } = req.body;
 
@@ -891,47 +704,10 @@ async function updateLeagueStandings(tournamentId) {
   }
 }
 
-// Endpoint to get league standings for a tournament
-app.get('/api/tournaments/:trId/standings', async (req, res) => {
-  const { trId } = req.params;
-  
-  try {
-    // Get standings with team names
-    const standingsResult = await query(
-      `SELECT ls.*, t.team_name 
-       FROM league_standings ls 
-       JOIN team t ON ls.team_id = t.team_id 
-       WHERE ls.tr_id = $1 
-       ORDER BY ls.position`,
-      [trId]
-    );
-    
-    // If no standings found, try to calculate them first
-    if (standingsResult.rows.length === 0) {
-      await updateLeagueStandings(trId);
-      
-      // Try to get standings again
-      const updatedStandingsResult = await query(
-        `SELECT ls.*, t.team_name 
-         FROM league_standings ls 
-         JOIN team t ON ls.team_id = t.team_id 
-         WHERE ls.tr_id = $1 
-         ORDER BY ls.position`,
-        [trId]
-      );
-      
-      res.json(updatedStandingsResult.rows);
-    } else {
-      res.json(standingsResult.rows);
-    }
-  } catch (err) {
-    console.error('Error fetching standings:', err);
-    res.status(500).json({ message: 'Failed to fetch standings', error: err.message });
-  }
-});
+
 
 // Endpoint to manually trigger standings recalculation
-app.post('/api/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
+app.post('/api/admin/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
   const { trId } = req.params;
   
   try {
@@ -1260,7 +1036,7 @@ app.get('/api/tournaments/:trId/standings', async (req, res) => {
 });
 
 // Endpoint to manually trigger standings recalculation
-app.post('/api/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
+app.post('/api/admin/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
   const { trId } = req.params;
   
   try {

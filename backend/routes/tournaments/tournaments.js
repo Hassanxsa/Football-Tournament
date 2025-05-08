@@ -192,6 +192,44 @@ router.get(
 );
 
 
+// Endpoint to get league standings for a tournament
+router.get('/:trId/standings', async (req, res) => {
+  const { trId } = req.params;
+  
+  try {
+    // Get standings with team names
+    const standingsResult = await query(
+      `SELECT ls.*, t.team_name 
+       FROM league_standings ls 
+       JOIN team t ON ls.team_id = t.team_id 
+       WHERE ls.tr_id = $1 
+       ORDER BY ls.position`,
+      [trId]
+    );
+    
+    // If no standings found, try to calculate them first
+    if (standingsResult.rows.length === 0) {
+      await updateLeagueStandings(trId);
+      
+      // Try to get standings again
+      const updatedStandingsResult = await query(
+        `SELECT ls.*, t.team_name 
+         FROM league_standings ls 
+         JOIN team t ON ls.team_id = t.team_id 
+         WHERE ls.tr_id = $1 
+         ORDER BY ls.position`,
+        [trId]
+      );
+      
+      res.json(updatedStandingsResult.rows);
+    } else {
+      res.json(standingsResult.rows);
+    }
+  } catch (err) {
+    console.error('Error fetching standings:', err);
+    res.status(500).json({ message: 'Failed to fetch standings', error: err.message });
+  }
+});
 
 
 
