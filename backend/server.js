@@ -23,6 +23,8 @@ import playersRoute from './routes/players/players.js';
 import matchesRoute from './routes/matches/matches.js';
 import homeRoute from './routes/home/home.js';
 import venuesRoute from './routes/venues/venues.js';
+import adminUsersRoute from './routes/admin/users.js';
+
 
 
 const app = express();
@@ -72,6 +74,8 @@ app.use('/api/home', homeRoute)
 
 // venues route
 app.use('/api/venues', venuesRoute)
+// admin users management  route
+app.use('/api/admin/users', adminUsersRoute)
 
 
 
@@ -723,22 +727,7 @@ app.post('/api/admin/tournaments/:trId/recalculate-standings', passport.authenti
   }
 });
 
-// Get venues for match dropdown
-app.get('/api/venues', async (req, res) => {
-  try {
-    const result = await query(
-      `SELECT venue_id, venue_name, venue_capacity 
-       FROM venue 
-       WHERE venue_status = 'A' 
-       ORDER BY venue_name`
-    );
-    
-    return res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching venues:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
+
 
 
 
@@ -930,71 +919,7 @@ app.delete(
   }
 );
 
-////////////////////// User management routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-// Get all users (admin only)
-app.get(
-  '/admin/users',
-  passport.authenticate('jwt', { session: false }),
-  checkAdmin,
-  async (req, res) => {
-    const sql = `
-      SELECT id, first_name, last_name, email, user_type
-      FROM public.users;
-    `;
 
-    try {
-      const { rows } = await query(sql);
-      return res.json(rows);
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-);
-// Update user type (admin only)
-app.put(
-  '/admin/users/:id',
-  passport.authenticate('jwt', { session: false }),
-  checkAdmin,
-  async (req, res) => {
-    const { id } = req.params;
-    const { user_type } = req.body;
-    const sql = `
-      UPDATE public.users
-      SET user_type = $1
-      WHERE id = $2;
-    `;
-
-    try {
-      await query(sql, [user_type, id]);
-      return res.json({ message: 'User type updated successfully' });
-    } catch (err) {
-      console.error('Error updating user type:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-);
-// Delete a user (admin only)
-app.delete(
-  '/admin/users/:id',
-  passport.authenticate('jwt', { session: false }),
-  checkAdmin,
-  async (req, res) => {
-    const { id } = req.params;
-    const sql = `
-      DELETE FROM public.users
-      WHERE id = $1;
-    `;
-
-    try {
-      await query(sql, [id]);
-      return res.json({ message: 'User deleted successfully' });
-    } catch (err) {
-      console.error('Error deleting user:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-);
 
 // Endpoint to get league standings for a tournament
 app.get('/api/tournaments/:trId/standings', async (req, res) => {
