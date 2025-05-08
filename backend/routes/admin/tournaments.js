@@ -145,5 +145,102 @@ router.delete(
   }
 );
 
+// Create a new match for a tournament
+router.post('/:trId/matches', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
+  const { trId } = req.params;
+  const { play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec } = req.body;
+
+  try {
+    const tournamentExists = await query('SELECT * FROM tournament WHERE tr_id = $1', [trId]);
+    if (tournamentExists.rows.length === 0) {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+
+    // Check that both teams exist in the tournament
+    const team1Check = await query('SELECT * FROM tournament_team WHERE tr_id = $1 AND team_id = $2', [trId, team_id1]);
+    const team2Check = await query('SELECT * FROM tournament_team WHERE tr_id = $1 AND team_id = $2', [trId, team_id2]);
+
+    if (team1Check.rows.length === 0 || team2Check.rows.length === 0) {
+      return res.status(400).json({ message: 'One or both teams are not participating in this tournament' });
+    }
+
+    // Get the next match_no
+    const maxMatchNoResult = await query('SELECT MAX(match_no) FROM match_played');
+    const maxMatchNo = maxMatchNoResult.rows[0].max || 0;
+    const newMatchNo = maxMatchNo + 1;
+
+    // First get valid player_id values from the database
+    const playerQuery = await query('SELECT player_id FROM player LIMIT 1');
+    let validPlayerId = null;
+    
+    if (playerQuery.rows.length > 0) {
+      validPlayerId = playerQuery.rows[0].player_id;
+    }
+    
+    // Insert the new match
+    let newMatch;
+    
+    if (validPlayerId) {
+      // If we have a valid player, use it for player_of_match
+      newMatch = await query(
+        'INSERT INTO match_played (match_no, play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+        [newMatchNo, play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, validPlayerId, stop1_sec || 0, stop2_sec || 0]
+      );
+    } else {
+      // If we couldn't find a valid player, attempt an insert without the player_of_match field
+      // This requires your DB schema to allow NULL for this field, or for it to have a DEFAULT value set
+      newMatch = await query(
+        'INSERT INTO match_played (match_no, play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, stop1_sec, stop2_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+        [newMatchNo, play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, stop1_sec || 0, stop2_sec || 0]
+      );
+    }
+
+    // If match has a score (not a future match), update league standings
+    if (goal_score && goal_score !== '0-0' && goal_score !== 'N/A') {
+      await updateLeagueStandings(trId);
+    }
+
+    res.status(201).json(newMatch.rows[0]);
+  } catch (err) {
+    console.error('Error creating match:', err);
+    res.status(500).json({ message: 'Failed to create match', error: err.message });
+  }
+});
+
+// Endpoint to manually trigger standings recalculation
+router.post('/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
+  const { trId } = req.params;
+  
+  try {
+    const success = await updateLeagueStandings(trId);
+    if (success) {
+      res.json({ message: 'Standings recalculated successfully' });
+    } else {
+      res.status(500).json({ message: 'Failed to recalculate standings' });
+    }
+  } catch (err) {
+    console.error('Error recalculating standings:', err);
+    res.status(500).json({ message: 'Failed to recalculate standings', error: err.message });
+  }
+});
+
+
+// Endpoint to manually trigger standings recalculation
+router.post('/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
+    const { trId } = req.params;
+    
+    try {
+      const success = await updateLeagueStandings(trId);
+      if (success) {
+        res.json({ message: 'Standings recalculated successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to recalculate standings' });
+      }
+    } catch (err) {
+      console.error('Error recalculating standings:', err);
+      res.status(500).json({ message: 'Failed to recalculate standings', error: err.message });
+    }
+  });
+
 
 export default router;
