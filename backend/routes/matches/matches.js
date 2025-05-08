@@ -10,6 +10,7 @@ import cors from 'cors';  // Import cors
 import axios from 'axios';
 import { query } from '../middleware/db.js';
 import { checkAdmin } from '../middleware/checkAdmin.js';
+import { updateLeagueStandings } from '../middleware/updateLeagueStandings.js';
 
 const router = express.Router();
 
@@ -258,6 +259,59 @@ router.get(
     }
   }
 );
+
+// Update a match
+router.put('/:matchNo', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { matchNo } = req.params;
+  const { play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec } = req.body;
+
+  try {
+    // Check if match exists
+    const matchExists = await query('SELECT * FROM match_played WHERE match_no = $1', [matchNo]);
+    if (matchExists.rows.length === 0) {
+      return res.status(404).json({ message: 'Match not found' });
+    }
+
+    // Get tournament ID from tournament_team using one of the teams
+    const teamTournamentQuery = await query('SELECT tr_id FROM tournament_team WHERE team_id = $1 LIMIT 1', [team_id1]);
+    const trId = teamTournamentQuery.rows[0]?.tr_id;
+
+    // First get valid player_id values from the database
+    const playerQuery = await query('SELECT player_id FROM player LIMIT 1');
+    let validPlayerId = null;
+    
+    if (playerQuery.rows.length > 0) {
+      validPlayerId = playerQuery.rows[0].player_id;
+    }
+    
+    // Update the match
+    let updatedMatch;
+    
+    if (validPlayerId) {
+      // If we have a valid player, use it for player_of_match
+      updatedMatch = await query(
+        'UPDATE match_played SET play_date = $1, team_id1 = $2, team_id2 = $3, venue_id = $4, results = $5, decided_by = $6, goal_score = $7, audience = $8, player_of_match = $9, stop1_sec = $10, stop2_sec = $11 WHERE match_no = $12 RETURNING *',
+        [play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, validPlayerId, stop1_sec || 0, stop2_sec || 0, matchNo]
+      );
+    } else {
+      // If we couldn't find a valid player, attempt an update without the player_of_match field
+      updatedMatch = await query(
+        'UPDATE match_played SET play_date = $1, team_id1 = $2, team_id2 = $3, venue_id = $4, results = $5, decided_by = $6, goal_score = $7, audience = $8, stop1_sec = $9, stop2_sec = $10 WHERE match_no = $11 RETURNING *',
+        [play_date, team_id1, team_id2, venue_id, results, decided_by, goal_score, audience, stop1_sec || 0, stop2_sec || 0, matchNo]
+      );
+    }
+
+    // If match has a score, update league standings
+    if (goal_score && goal_score !== '0-0' && goal_score !== 'N/A') {
+      await updateLeagueStandings(trId);
+    }
+
+    res.json(updatedMatch.rows[0]);
+  } catch (err) {
+    console.error('Error updating match:', err);
+    res.status(500).json({ message: 'Failed to update match', error: err.message });
+  }
+});
 
 
 
