@@ -93,10 +93,6 @@ app.use('/api/admin/players', adminPlayersRoute)
 
 
 
-
-
-
-
 // Approve or reject a join request (admin only)
 app.put(
   '/api/admin/join-requests/:requestId',
@@ -140,12 +136,6 @@ app.put(
     }
   }
 );
-
-
-
-
-
-
 
 
 
