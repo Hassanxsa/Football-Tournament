@@ -281,27 +281,39 @@ router.post(
   '/join-request',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
-    const player_id = req.user.id;           // from JWT
-    const { team_id, requested_position } = req.body;
+    const player_id = req.user.id;
+    const { team_id, requested_position, jersey_no } = req.body;
 
-    if (!team_id || !requested_position) {
+    if (!team_id || !requested_position || !jersey_no) {
       return res
         .status(400)
-        .json({ error: 'team_id and requested_position are required' });
+        .json({ error: 'team_id, requested_position and jersey_no are required' });
     }
 
     try {
-      const insertSql = `
+      // 1) ensure they exist in `player` (upsert)
+      await query(
+        `
+        INSERT INTO public.player (player_id, jersey_no, position_to_play)
+             VALUES ($1, $2, $3)
+        ON CONFLICT (player_id) DO UPDATE
+           SET jersey_no        = EXCLUDED.jersey_no,
+               position_to_play = EXCLUDED.position_to_play
+        `,
+        [player_id, jersey_no, requested_position]
+      );
+
+      // 2) insert the join request
+      const { rows } = await query(
+        `
         INSERT INTO public.team_join_requests
           (player_id, team_id, requested_position)
         VALUES ($1, $2, $3)
-        RETURNING request_id, status;
-      `;
-      const { rows } = await query(insertSql, [
-        player_id,
-        team_id,
-        requested_position
-      ]);
+        RETURNING request_id, status
+        `,
+        [player_id, team_id, requested_position]
+      );
+
       return res.status(201).json(rows[0]);
     } catch (err) {
       console.error('Error creating join request:', err);
@@ -309,6 +321,7 @@ router.post(
     }
   }
 );
+
 
 
 export default router;

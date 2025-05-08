@@ -100,32 +100,37 @@ app.put(
   checkAdmin,
   async (req, res) => {
     const { requestId } = req.params;
-    const { status }   = req.body;  // expected 'accepted' or 'rejected'
+    const { status, tr_id } = req.body; 
+    // tr_id is the tournament you want to enroll them in
 
+    // 1) Validate inputs
     if (!['accepted','rejected'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
+    if (status === 'accepted' && !tr_id) {
+      return res.status(400).json({ error: 'tr_id is required when accepting' });
+    }
 
     try {
-      // 1) update the request’s status
-      const updSql = `
+      // 2) Update the join-request
+      const updateSql = `
         UPDATE public.team_join_requests
-        SET status = $1
-        WHERE request_id = $2
-        RETURNING player_id, team_id;
+           SET status = $1
+         WHERE request_id = $2
+      RETURNING player_id, team_id;
       `;
-      const { rows } = await query(updSql, [status, requestId]);
+      const { rows } = await query(updateSql, [status, requestId]);
       if (rows.length === 0) {
-        return res.status(404).json({ error: 'Request not found' });
+        return res.status(404).json({ error: 'Join request not found' });
       }
-      const { player_id, team_id } = rows[0];
 
-      // 2) if accepted, add to roster
+      // 3) If accepted, add them to the team roster
       if (status === 'accepted') {
+        const { player_id, team_id } = rows[0];
         await query(
           `INSERT INTO public.team_player (player_id, team_id, tr_id)
-           VALUES ($1, $2, /* provide a valid tr_id here */)`,
-          [player_id, team_id]
+           VALUES ($1, $2, $3)`,
+          [player_id, team_id, tr_id]
         );
       }
 
@@ -136,6 +141,7 @@ app.put(
     }
   }
 );
+
 
 
 
