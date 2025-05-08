@@ -8,9 +8,13 @@ import bcrypt from 'bcryptjs';
 import logger from 'morgan'
 import jwt from 'jsonwebtoken';
 import cors from 'cors';  // Import cors
-import { query } from './db/connectPostgres.js';
+import { query } from './routes/middleware/db.js';
+import { checkAdmin } from './routes/middleware/checkAdmin.js';
 import axios from 'axios';
 const PORT = process.env.PORT || 5000;
+
+import loginRoute from './routes/auth/login.js';
+import signupRoute from './routes/auth/signup.js';
 
 
 const app = express();
@@ -29,198 +33,23 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Middleware to check if user is an admin
-const ensureAdmin = async (req, res, next) => {
-  console.log('checkAdmin middleware called');
-  console.log('User from request:', req.user);
-  
-  if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-  
-  try {
-    console.log('Checking admin status for user ID:', req.user.id);
-    const result = await query('SELECT user_type FROM users WHERE id = $1', [req.user.id]);
-    console.log('Database query result:', result.rows);
-    
-    if (result.rows.length > 0 && result.rows[0].user_type === 'admin') {
-      console.log('User is admin according to database');
-      return next();
-    } else {
-      console.log('User is NOT admin according to database');
-      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
-    }
-  } catch (err) {
-    console.error('Error in admin check middleware:', err);
-    return res.status(500).json({ message: 'Server error during admin verification' });
-  }
-};
 
-// Get matches for a specific tournament
-app.get('/api/tournaments/:trId/matches', passport.authenticate('jwt', { session: false }), async (req, res) => {
-  try {
-    const { trId } = req.params;
-    
-    // First, get all teams in this tournament
-    const teamsQuery = await query(
-      `SELECT team_id FROM tournament_team WHERE tr_id = $1`,
-      [trId]
-    );
-    
-    if (teamsQuery.rows.length === 0) {
-      return res.json([]);
-    }
-    
-    // Extract team IDs
-    const teamIds = teamsQuery.rows.map(team => team.team_id);
-    
-    // Now get all matches where either team1 or team2 is in our list of tournament teams
-    const matchesQuery = await query(
-      `SELECT 
-        m.match_no, 
-        m.play_date,
-        t1.team_id AS team_id1,
-        t1.team_name AS team1,
-        t2.team_id AS team_id2,
-        t2.team_name AS team2,
-        v.venue_name AS venue,
-        m.results,
-        m.goal_score,
-        $2 AS tournament_name
-      FROM public.match_played AS m
-      JOIN public.team AS t1 ON m.team_id1 = t1.team_id
-      JOIN public.team AS t2 ON m.team_id2 = t2.team_id
-      JOIN public.venue AS v ON m.venue_id = v.venue_id
-      WHERE 
-        (m.team_id1 = ANY($1::numeric[]) OR m.team_id2 = ANY($1::numeric[]))
-      ORDER BY m.play_date DESC`,
-      [teamIds, (await query('SELECT tr_name FROM tournament WHERE tr_id = $1', [trId])).rows[0]?.tr_name || 'Unknown Tournament']
-    );
-    
-    res.json(matchesQuery.rows);
-  } catch (error) {
-    console.error('Error fetching tournament matches:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+//////// Authentication Routes /////////////
 
 // signup route
-
-app.post('/api/signup', async (req, res) => {
-  const {first_name, last_name, email, password, date_of_birth} = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Extract KFUPM ID from email (e.g., "s202272000@kfupm.edu.sa")
-  const match = email.match(/^s(\d{9})@kfupm\.edu\.sa$/);
-  if (!match) {
-    return res.status(400).json({ message: 'Invalid KFUPM email format' });
-  }
-  const kfupmId = parseInt(match[1]); // This will be 202272000
-
-
-  try {
-    await query(
-      'INSERT INTO users (id, first_name, last_name, email, password, user_type) VALUES ($1, $2, $3, $4, $5, $6)',
-      [kfupmId, first_name, last_name, email, hashedPassword, 'guest']
-    );
-    res.json({ message: 'User created successfully' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
-
-  }
-}
-);
-
+app.use('/api/signup', signupRoute);
 // login route
-
-app.post('/api/login', (req, res) => {
-  passport.authenticate('local', { session: false }, (err, user, info) => {
-    if (err) {
-      console.error('Login error:', err);
-      return res.status(500).json({
-        message: 'Internal server error during login',
-      });
-    }
-    
-    if (!user) {
-      return res.status(401).json({
-        message: info ? info.message : 'Invalid email or password',
-      });
-    }
-    
-    req.login(user, { session: false }, (err) => {
-      if (err) {
-        console.error('Login session error:', err);
-        return res.status(500).json({ message: 'Error during login process' });
-      }
-      
-      // Include user role information in the token payload
-      const token = jwt.sign({ 
-        id: user.id,
-        role: user.user_type || 'user'
-      }, process.env.JWT_SECRET, { expiresIn: '1h' });
-      
-      return res.status(200).json({ 
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.first_name,
-          lastName: user.last_name,
-          role: user.user_type || 'user'
-        }
-      });
-    });
-  })(req, res);
-});
-
-// welcome test route
-app.get('/', (req, res) => {
-  res.send('Welcome to the Football Tournament API!');
-});
+app.use('/api/login', loginRoute);
 
 
 
 
-// Middleware to check if user is admin
-const checkAdmin = (req, res, next) => {
-  console.log('checkAdmin middleware called');
-  console.log('User from request:', req.user);
-  
-  // Make sure user exists in the request
-  if (!req.user || !req.user.id) {
-    console.log('No user in request or missing ID');
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  
-  const userId = req.user.id;
-  console.log('Checking admin status for user ID:', userId);
-  
-  // Check if user is already admin in the token
-  if (req.user.role === 'admin') {
-    console.log('User is admin according to JWT token');
-    return next();
-  }
-  
-  // Fallback to database check
-  query('SELECT user_type FROM users WHERE id = $1', [userId])
-    .then(result => {
-      console.log('Database query result:', result.rows);
-      
-      if (result.rows.length > 0 && result.rows[0].user_type === 'admin') {
-        console.log('User is admin according to database');
-        next();
-      } else {
-        console.log('User is NOT admin:', result.rows);
-        res.status(403).json({ message: 'Access denied' });
-      }
-    })
-    .catch(err => {
-      console.error('Database error when checking admin:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    });
-};
+
+
+
+
+
+
 
 //main pages routes (view tournaments, teams, players, venues, home)
 
@@ -1811,7 +1640,7 @@ app.get('/api/matches/:matchNo', async (req, res) => {
 });
 
 // Create a new match for a tournament
-app.post('/api/tournaments/:trId/matches', passport.authenticate('jwt', { session: false }), ensureAdmin, async (req, res) => {
+app.post('/api/tournaments/:trId/matches', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
   const { trId } = req.params;
   const { play_date, team_id1, team_id2, play_stage, venue_id, results, decided_by, goal_score, audience, player_of_match, stop1_sec, stop2_sec } = req.body;
 
@@ -2076,7 +1905,7 @@ app.get('/api/tournaments/:trId/standings', async (req, res) => {
 });
 
 // Endpoint to manually trigger standings recalculation
-app.post('/api/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), ensureAdmin, async (req, res) => {
+app.post('/api/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
   const { trId } = req.params;
   
   try {
@@ -2405,7 +2234,7 @@ app.get('/api/tournaments/:trId/standings', async (req, res) => {
 });
 
 // Endpoint to manually trigger standings recalculation
-app.post('/api/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), ensureAdmin, async (req, res) => {
+app.post('/api/tournaments/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
   const { trId } = req.params;
   
   try {
