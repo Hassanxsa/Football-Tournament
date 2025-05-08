@@ -19,12 +19,6 @@ const router = express.Router();
 
 
 
-
-
-
-
-
-
 router.get(
   '/',
   passport.authenticate('jwt', { session: false }),
