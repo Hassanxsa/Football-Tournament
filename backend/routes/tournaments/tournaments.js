@@ -193,43 +193,60 @@ router.get(
 
 
 // Endpoint to get league standings for a tournament
-router.get('/:trId/standings', async (req, res) => {
-  const { trId } = req.params;
-  
+
+/**
+ * GET /api/tournaments/:id/standings
+ * Returns the league standings for a given tournament ID, ordered by points, goal difference, and goals scored.
+ */
+router.get('/:id/standings', async (req, res) => {
+  const { id } = req.params;
+  const sql = `
+    SELECT
+      tt.team_id,
+      t.team_name,
+      tt.match_played   AS played,
+      tt.won            AS won,
+      tt.draw           AS drawn,
+      tt.lost           AS lost,
+      tt.goal_for       AS goals_for,
+      tt.goal_against   AS goals_against,
+      tt.goal_diff      AS goal_difference,
+      tt.points         AS points,
+      tt.group_position
+    FROM public.tournament_team tt
+    JOIN public.team t ON tt.team_id = t.team_id
+    WHERE tt.tr_id = $1
+    ORDER BY
+      tt.points DESC,
+      tt.goal_diff DESC,
+      tt.goal_for DESC;
+  `;
+
   try {
-    // Get standings with team names
-    const standingsResult = await query(
-      `SELECT ls.*, t.team_name 
-       FROM league_standings ls 
-       JOIN team t ON ls.team_id = t.team_id 
-       WHERE ls.tr_id = $1 
-       ORDER BY ls.position`,
-      [trId]
-    );
-    
-    // If no standings found, try to calculate them first
-    if (standingsResult.rows.length === 0) {
-      await updateLeagueStandings(trId);
-      
-      // Try to get standings again
-      const updatedStandingsResult = await query(
-        `SELECT ls.*, t.team_name 
-         FROM league_standings ls 
-         JOIN team t ON ls.team_id = t.team_id 
-         WHERE ls.tr_id = $1 
-         ORDER BY ls.position`,
-        [trId]
-      );
-      
-      res.json(updatedStandingsResult.rows);
-    } else {
-      res.json(standingsResult.rows);
-    }
+    const { rows } = await query(sql, [id]);
+    // Add position based on sorted order
+    const standings = rows.map((row, index) => ({
+      position: index + 1,
+      team_id: Number(row.team_id),
+      team_name: row.team_name,
+      played: Number(row.played),
+      won: Number(row.won),
+      drawn: Number(row.drawn),
+      lost: Number(row.lost),
+      goals_for: Number(row.goals_for),
+      goals_against: Number(row.goals_against),
+      goal_difference: Number(row.goal_difference),
+      points: Number(row.points)
+    }));
+
+    return res.json(standings);
   } catch (err) {
     console.error('Error fetching standings:', err);
-    res.status(500).json({ message: 'Failed to fetch standings', error: err.message });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+
 
 
 
