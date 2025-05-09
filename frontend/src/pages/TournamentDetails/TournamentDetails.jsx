@@ -305,7 +305,37 @@ const TournamentDetails = () => {
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Team
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        MP
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        W
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        D
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        L
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        GF
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        GA
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        GD
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Pts
+                      </th>
+                    </tr>
+                  </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {/* If there are groups, separate by group */}
                     {groups.length > 0 ? (
@@ -379,34 +409,39 @@ const TournamentDetails = () => {
                   matches
                     .sort((a, b) => new Date(b.play_date) - new Date(a.play_date)) // Latest matches first
                     .map((match, index) => (
-                      <div key={match.match_no || index} className="p-4">
-                        <div className="flex justify-between items-center mb-2">
+                      <div key={match.match_no || index} className="p-4 border border-gray-200 rounded-lg mb-3">
+                        <div className="flex justify-between items-center mb-3">
                           <div className="text-sm text-gray-500">
                             {new Date(match.play_date).toLocaleDateString()} · Match {match.match_no} · {match.venue_name}
                           </div>
-                          <div className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          <div className="text-xs font-bold bg-gray-100 px-2 py-1 rounded">
                             {match.results === 'N/A' ? 'Scheduled' : 'Completed'}
                           </div>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <div className="flex-1 text-right pr-4">
-                            <Link to={`/teams/${match.team_id1}`} className="text-lg font-medium hover:text-blue-600">
-                              {match.team1}
-                            </Link>
+                        
+                        {/* Teams and Score - Prominent Display */}
+                        <div className="grid grid-cols-7 items-center py-3 bg-gray-50 rounded-lg mb-3">
+                          <div className="col-span-3 text-right pr-3">
+                            <div className="text-lg font-bold">
+                              {match.team_name1 || 'Home Team'}
+                            </div>
                           </div>
-                          <div className="flex items-center justify-center px-4 py-2 bg-gray-100 rounded-lg">
-                            <span className="font-semibold text-xl">
+                          
+                          <div className="col-span-1 text-center">
+                            <span className="font-bold text-xl px-3 py-1 bg-white rounded-lg border">
                               {match.results !== 'N/A' ? match.goal_score : 'vs'}
                             </span>
                           </div>
-                          <div className="flex-1 text-left pl-4">
-                            <Link to={`/teams/${match.team_id2}`} className="text-lg font-medium hover:text-blue-600">
-                              {match.team2}
-                            </Link>
+                          
+                          <div className="col-span-3 text-left pl-3">
+                            <div className="text-lg font-bold">
+                              {match.team_name2 || 'Away Team'}
+                            </div>
                           </div>
                         </div>
-                        <div className="mt-2 text-center">
-                          <Link to={`/matches/${match.match_no}`} className="text-sm text-blue-600 hover:text-blue-800">
+                        
+                        <div className="text-center">
+                          <Link to={`/matches/${match.match_no}`} className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm">
                             View match details
                           </Link>
                         </div>
