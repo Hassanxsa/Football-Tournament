@@ -19,20 +19,20 @@ router.post(
   '/',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
-    const {
-      play_date,
-      team_id1,
-      team_id2,
-      result,       // 'WIN', 'DRAW' or 'LOSS' (from team1's POV)
-      decided_by,   // e.g. 'P'
-      goal_score1,
-      goal_score2,
-      venue_id,
-      audience,
-      player_of_match,
-      stop1_sec,
-      stop2_sec,
-      tr_id
+    let {
+      play_date   = null,
+      team_id1    = null,
+      team_id2    = null,
+      result      = null,  // e.g. 'WIN','DRAW','LOSS'
+      decided_by  = null,  // e.g. 'P'
+      goal_score1 = null,
+      goal_score2 = null,
+      venue_id ,
+      audience    = null,
+      player_of_match = null,
+      stop1_sec   = null,
+      stop2_sec   = null,
+      tr_id 
     } = req.body;
 
     // // 1) basic validation
@@ -43,6 +43,10 @@ router.post(
     // }
 
     try {
+      const goalScore =
+      goal_score1 != null && goal_score2 != null
+      ? `${goal_score1}-${goal_score2}`
+      : null;
       // 2) fetch next match_no
       const nextRes = await query(`
         SELECT COALESCE(MAX(CAST(match_no AS INTEGER)),0) + 1 AS next_no
@@ -78,7 +82,7 @@ router.post(
   result,
   decided_by,
   // goal_score stored as same "X‑Y" string
-  `${goal_score1}-${goal_score2}`,
+  goalScore,
   venue_id,
   audience || 0,
   player_of_match,
