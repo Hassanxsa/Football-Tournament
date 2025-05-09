@@ -91,11 +91,18 @@ router.post(
   tr_id
 ]);
 
-      // 4) derive W/D/L flags
-      let wl1, wl2;
-      if (result === 'WIN')    { wl1 = 'W'; wl2 = 'L'; }
-      else if (result === 'LOSS'){ wl1 = 'L'; wl2 = 'W'; }
-      else                       { wl1 = wl2 = 'D'; }
+        // 4) derive W/D/L flags
+        let wl1 = null, wl2 = null;
+
+        if (result === 'WIN') {
+          wl1 = 'W';
+          wl2 = 'L';
+        } else if (result === 'LOSS') {
+          wl1 = 'L';
+          wl2 = 'W';
+        } else if (result === 'DRAW') {
+          wl1 = wl2 = 'D';
+        }
 
       // 5) insert into match_details for team1
       await query(`
