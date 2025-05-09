@@ -66,19 +66,42 @@ const MatchForm = () => {
         // If editing an existing match, fetch its details
         if (isEditMode && matchNo) {
           const matchData = await matchService.getMatchById(matchNo);
-          // Use the tournament ID from the URL or try to get it from other match data
-          let tournamentId = trId || '';
+          console.log('Loaded match data:', matchData);
+          
+          // Get tournament ID either from URL or the match data we fetched
+          const tournamentId = trId || matchData.tr_id || '';
+          console.log('Using tournament ID:', tournamentId);
+          
+          // If we have a tournament ID but no teams loaded, fetch the teams for this tournament
+          if (tournamentId && tournamentTeams.length === 0) {
+            try {
+              const tournamentTeamsData = await tournamentService.getTournamentTeams(tournamentId);
+              setTournamentTeams(tournamentTeamsData);
+              console.log('Loaded teams for tournament:', tournamentTeamsData);
+            } catch (err) {
+              console.error('Error loading teams for tournament:', err);
+            }
+          }
             
           setFormData({
             ...matchData,
             play_date: matchData.play_date ? matchData.play_date.split('T')[0] : new Date().toISOString().split('T')[0],
             team_id1: matchData.team_id1,
             team_id2: matchData.team_id2,
-            tr_id: tournamentId || '',
+            tr_id: tournamentId,
             results: matchData.results || 'N/A',
             goal_score: matchData.goal_score || '0-0',
             decided_by: matchData.decided_by || 'N'
-          })
+          });
+          
+          // Load players for both teams
+          if (matchData.team_id1) {
+            fetchTeamPlayers(matchData.team_id1, setTeam1Players);
+          }
+          
+          if (matchData.team_id2) {
+            fetchTeamPlayers(matchData.team_id2, setTeam2Players);
+          }
         }
         
         setLoading(false);
