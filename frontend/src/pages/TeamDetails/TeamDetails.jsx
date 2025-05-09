@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { teamService } from '../../services/api';
+import { teamService, playerService } from '../../services/api';
 
 const TeamDetails = () => {
   const { id } = useParams();
@@ -11,6 +11,7 @@ const TeamDetails = () => {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showRedCardPlayersOnly, setShowRedCardPlayersOnly] = useState(false);
   
   useEffect(() => {
     const fetchTeamDetails = async () => {
@@ -22,7 +23,29 @@ const TeamDetails = () => {
         setTeam(teamData);
         
         // Fetch players in this team
-        const playersData = await teamService.getTeamPlayers(id);
+        let playersData = await teamService.getTeamPlayers(id);
+        
+        // Fetch player stats for each player
+        playersData = await Promise.all(playersData.map(async (player) => {
+          try {
+            const stats = await playerService.getPlayerStats(player.player_id);
+            return {
+              ...player,
+              goals: stats.goals || 0,
+              yellow_cards: stats.yellow_cards || 0,
+              red_cards: stats.red_cards || 0,
+            };
+          } catch (err) {
+            console.error(`Error fetching stats for player ${player.player_id}:`, err);
+            return {
+              ...player,
+              goals: 0,
+              yellow_cards: 0,
+              red_cards: 0
+            };
+          }
+        }));
+        
         setPlayers(playersData);
         
         // Fetch matches for this team
@@ -323,34 +346,74 @@ const TeamDetails = () => {
         
         {activeTab === 'players' && (
           <div className="space-y-8">
-            {sortedPositions.map(position => (
-              <div key={position} className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
-                  <h3 className="text-lg font-medium text-gray-900">{position}</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          #
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Age
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Position
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {playersByPosition[position].map((player, index) => (
+            <div className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
+              <h2 className="text-lg font-medium text-gray-900">Team Squad</h2>
+              <div className="flex items-center">
+                <label htmlFor="redCardFilter" className="mr-2 text-sm font-medium text-gray-700">
+                  Show players with red cards only
+                </label>
+                <label className="inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    id="redCardFilter"
+                    className="sr-only peer" 
+                    checked={showRedCardPlayersOnly}
+                    onChange={() => setShowRedCardPlayersOnly(!showRedCardPlayersOnly)}
+                  />
+                  <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+            </div>
+            {sortedPositions.map(position => {
+              // Filter players in this position based on red card filter
+              const filteredPlayers = showRedCardPlayersOnly 
+                ? playersByPosition[position].filter(player => player.red_cards > 0)
+                : playersByPosition[position];
+                
+              // Only show position group if there are players to display after filtering
+              if (filteredPlayers.length === 0) return null;
+              
+              return (
+                <div key={position} className="bg-white rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      {position} 
+                      {showRedCardPlayersOnly && filteredPlayers.length > 0 && (
+                        <span className="ml-2 text-sm text-red-600 font-normal">
+                          ({filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''} with red cards)
+                        </span>
+                      )}
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            #
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Position
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Goals
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Yellow Cards
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Red Cards
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredPlayers.map((player, index) => (
                         <tr key={player.player_id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {player.jersey_no || '-'}
@@ -359,10 +422,18 @@ const TeamDetails = () => {
                             {player.name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {calculateAge(player.date_of_birth)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {player.position_to_play || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                            {player.goals}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                            {player.yellow_cards}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                            <span className={player.red_cards > 0 ? 'text-red-600 font-bold' : ''}>
+                              {player.red_cards}
+                            </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <Link to={`/players/${player.player_id}`} className="text-blue-600 hover:text-blue-900">
@@ -371,11 +442,12 @@ const TeamDetails = () => {
                           </td>
                         </tr>
                       ))}
-                    </tbody>
-                  </table>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         
