@@ -9,3 +9,5 @@
 7. Now, in the second terminal, go to the root directory of the project, then to the backend directory.
 8. Run `npm install`, then run `npm run dev`.
 9. You're done! Open the browser and go to `http://localhost:3000`.
+
+## Note: you may need to use the command ` npm i pg ` in the backend terminal 
