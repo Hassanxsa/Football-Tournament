@@ -26,6 +26,7 @@ import AdminPlayers from './pages/Admin/Players';
 import MatchList from './pages/Admin/MatchManagement/MatchList';
 import MatchForm from './pages/Admin/MatchManagement/MatchForm';
 import AdminLeagueStandings from './pages/Admin/TournamentManagement/LeagueStandings';
+import TeamPlayers from './pages/Admin/TeamManagement/TeamPlayers';
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
                 <Route path="admin" element={<AdminDashboard />} />
                 <Route path="admin/tournaments" element={<AdminTournaments />} />
                 <Route path="admin/teams" element={<AdminTeams />} />
+                <Route path="admin/teams/:teamId/players" element={<TeamPlayers />} />
                 <Route path="admin/players" element={<AdminPlayers />} />
                 
                 {/* Match Management Routes */}

@@ -227,7 +227,9 @@ export const teamService = {
   },
   
   assignCaptain: async (data) => {
+    // Use the correct path that matches the backend route
     const response = await api.post('/api/admin/teams/assign-captain', data);
+    console.log('Assign captain response:', response.data);
     return response.data;
   }
 };
