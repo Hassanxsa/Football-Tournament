@@ -117,6 +117,101 @@ router.post(
   }
 );
 
+//update match details
+router.put(
+  '/:match_no',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const { match_no } = req.params;
+    const {
+      play_date,
+      team_id1,
+      team_id2,
+      result,         // 'WIN' | 'DRAW' | 'LOSS' (from team1’s POV)
+      decided_by,     // e.g. 'P'
+      goal_score1,
+      goal_score2,
+      venue_id,
+      audience,
+      player_of_match,
+      stop1_sec,
+      stop2_sec,
+      tr_id
+    } = req.body;
+
+    // 1) basic validation
+    if (!play_date || !team_id1 || !team_id2 || !result || !decided_by
+        || goal_score1 == null || goal_score2 == null
+        || !venue_id || !tr_id) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // 2) derive W/D/L flags for each side
+    let wl1, wl2;
+    if (result === 'WIN')    { wl1 = 'W'; wl2 = 'L'; }
+    else if (result === 'LOSS'){ wl1 = 'L'; wl2 = 'W'; }
+    else                       { wl1 = wl2 = 'D'; }
+
+    try {
+      // 3) update the master record
+      await query(`
+        UPDATE public.match_played
+           SET play_date        = $1
+             , team_id1         = $2
+             , team_id2         = $3
+             , results          = $4
+             , decided_by       = $5
+             , goal_score       = $6
+             , venue_id         = $7
+             , audience         = $8
+             , player_of_match  = $9
+             , stop1_sec        = $10
+             , stop2_sec        = $11
+             , tr_id            = $12
+         WHERE match_no = $13
+      `, [
+        play_date,
+        team_id1,
+        team_id2,
+        result,
+        decided_by,
+        `${goal_score1}-${goal_score2}`,
+        venue_id,
+        audience || 0,
+        player_of_match,
+        stop1_sec   || 0,
+        stop2_sec   || 0,
+        tr_id,
+        match_no
+      ]);
+
+      // 4) update the two detail rows
+      await query(`
+        UPDATE public.match_details
+           SET win_lose   = $1
+             , goal_score = $2
+             , decided_by = $3
+         WHERE match_no = $4
+           AND team_id  = $5
+      `, [ wl1, goal_score1, decided_by, match_no, team_id1 ]);
+
+      await query(`
+        UPDATE public.match_details
+           SET win_lose   = $1
+             , goal_score = $2
+             , decided_by = $3
+         WHERE match_no = $4
+           AND team_id  = $5
+      `, [ wl2, goal_score2, decided_by, match_no, team_id2 ]);
+
+      return res.json({ match_no, message: 'Match updated successfully' });
+    } catch (err) {
+      console.error('Error updating match:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
 
 
 
