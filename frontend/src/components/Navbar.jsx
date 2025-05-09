@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import PlayerRequestDialog from './PlayerRequestDialog';
-import RoleSelectionDialog from './RoleSelectionDialog';
 
 const Navbar = () => {
   const location = useLocation();
@@ -9,7 +8,6 @@ const Navbar = () => {
   const [playerRequestSent, setPlayerRequestSent] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showPlayerRequestDialog, setShowPlayerRequestDialog] = useState(false);
-  const [showRoleSelectionDialog, setShowRoleSelectionDialog] = useState(false);
   
   useEffect(() => {
     // Check if user is authenticated
@@ -42,10 +40,7 @@ const Navbar = () => {
     setShowPlayerRequestDialog(true);
   };
   
-  const handleRoleSelection = () => {
-    // Show the role selection dialog
-    setShowRoleSelectionDialog(true);
-  };
+
   
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -147,14 +142,7 @@ const Navbar = () => {
                 </button>
               )}
               
-              {isAuthenticated && (
-                <button
-                  onClick={handleRoleSelection}
-                  className="mr-4 px-3 py-1 rounded-md text-sm font-medium bg-black hover:bg-gray-800 text-white"
-                >
-                  Join as Manager/Coach
-                </button>
-              )}
+          
               
               <button className="bg-blue-700 p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-white">
                 <span className="sr-only">View notifications</span>
@@ -188,14 +176,7 @@ const Navbar = () => {
                       </button>
                     )}
                     
-                    {isAuthenticated && (
-                      <button
-                        onClick={handleRoleSelection}
-                        className="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                      >
-                        Become Manager/Coach
-                      </button>
-                    )}
+                    {/* Manager/Coach button removed as requested */}
                     
                     {isAuthenticated ? (
                       <button
@@ -261,10 +242,7 @@ const Navbar = () => {
       />
       
       {/* Role Selection Dialog */}
-      <RoleSelectionDialog
-        isOpen={showRoleSelectionDialog}
-        onClose={() => setShowRoleSelectionDialog(false)}
-      />
+
     </nav>
   );
 };

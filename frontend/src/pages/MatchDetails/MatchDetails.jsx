@@ -219,7 +219,11 @@ const MatchDetails = () => {
                 <dd className="mt-1 text-sm text-gray-900">
                   {match.results ? (
                     <span>
-                      {match.team_name1} {match.results === 'WIN' ? 'won' : match.results === 'LOSS' ? 'lost' : 'drew'} {match.goal_score}
+                      {match.results === 'WIN' ? 
+                        `${match.team_name1} won against ${match.team_name2} ${match.goal_score}` : 
+                        match.results === 'LOSS' ? 
+                        `${match.team_name2} won against ${match.team_name1} ${match.goal_score}` : 
+                        `${match.team_name1} and ${match.team_name2} drew ${match.goal_score}`}
                       {match.decided_by === 'P' && ' (after penalties)'}
                     </span>
                   ) : (

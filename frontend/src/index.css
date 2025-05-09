@@ -4,6 +4,18 @@
 
 /* Custom styles below this line */
 
+/* Fix for select dropdown text color */
+select, select option {
+  color: black !important;
+  background-color: white !important;
+}
+
+option {
+  background-color: white !important;
+  color: black !important;
+  font-weight: normal !important;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;

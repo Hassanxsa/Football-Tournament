@@ -31,22 +31,63 @@ const AdminTeams = () => {
   
   // Effect to load team players when a team is selected
   useEffect(() => {
-    if (selectedTeam) {
-      // Filter players for the selected team from the already loaded players
-      const filteredPlayers = safePlayers.filter(player => 
-        player.team_id === parseInt(selectedTeam)
-      );
-      setTeamPlayers(filteredPlayers);
-      
-      // Reset captain selection
-      setSelectedCaptain('');
-      
-      console.log(`Loaded ${filteredPlayers.length} players for team ${selectedTeam}`);
-    } else {
-      // Clear team players when no team is selected
-      setTeamPlayers([]);
-    }
-  }, [selectedTeam, safePlayers]);
+    const fetchPlayersForTeam = async () => {
+      if (selectedTeam) {
+        try {
+          // Get the team data
+          const teamData = safeTeams.find(team => 
+            team.team_id === selectedTeam || team.team_id === String(selectedTeam));
+          
+          if (!teamData) {
+            console.log(`Team with ID ${selectedTeam} not found`);
+            setTeamPlayers([]);
+            return;
+          }
+          
+          console.log(`Loading players for team: ${teamData.team_name} (ID: ${selectedTeam})`);
+          
+          // If team has players according to num_players
+          if (teamData.num_players && parseInt(teamData.num_players) > 0) {
+            console.log(`Team should have ${teamData.num_players} players according to data`);
+            
+            // APPROACH 1: Try to load players directly from the team-players API endpoint
+            try {
+              // Make sure we use a numeric ID
+              const numericTeamId = parseInt(selectedTeam);
+              const response = await teamService.getTeamPlayers(numericTeamId);
+              console.log('Team players API response:', response);
+              
+              if (Array.isArray(response) && response.length > 0) {
+                console.log(`Found ${response.length} players via API call`);
+                setTeamPlayers(response);
+                return;
+              }
+            } catch (err) {
+              console.error('Error fetching team players from API:', err);
+            }
+            
+            // APPROACH 2: If API call fails, use all players as a fallback
+            console.log('API call failed or returned no players, using all players as fallback');
+            setTeamPlayers(safePlayers);
+          } else {
+            console.log('Team has no players according to num_players');
+            setTeamPlayers([]);
+          }
+        } catch (error) {
+          console.error('Error loading team players:', error);
+          setTeamPlayers([]);
+        }
+        
+        // Reset captain selection
+        setSelectedCaptain('');
+      } else {
+        // Clear team players when no team is selected
+        setTeamPlayers([]);
+      }
+    };
+    
+    fetchPlayersForTeam();
+  }, [selectedTeam, safeTeams, safePlayers]);
   
   // Delete team function
   const deleteTeam = async (teamId, teamName) => {
@@ -256,38 +297,70 @@ const AdminTeams = () => {
     setTeamToAdd('');
   };
 
-  const assignCaptain = () => {
+  const assignCaptain = async () => {
     if (!selectedTeam || !selectedCaptain) {
       setError('Please select both a team and a player');
       return;
     }
     
-    // In a real app, this would be an API call
-    // Update players data with new captain
-    const updatedPlayers = players.map(player => {
-      if (player.team_id === parseInt(selectedTeam)) {
-        // Set is_captain=true for selected player, false for all others in team
-        return {
-          ...player,
-          is_captain: player.player_id === parseInt(selectedCaptain)
-        };
-      }
-      return player;
-    });
-    
-    setPlayers(updatedPlayers);
-    
-    // Update teamPlayers list
-    const updatedTeamPlayers = updatedPlayers.filter(player => 
-      player.team_id === parseInt(selectedTeam)
-    );
-    setTeamPlayers(updatedTeamPlayers);
-    
-    // Show success message
-    const teamName = teams.find(t => t.team_id === parseInt(selectedTeam))?.team_name;
-    const playerName = players.find(p => p.player_id === parseInt(selectedCaptain))?.name;
-    
-    setSuccessMessage(`${playerName} assigned as captain of ${teamName} successfully!`);
+    try {
+      // Log the selected values
+      console.log('Selected team ID:', selectedTeam, 'type:', typeof selectedTeam);
+      console.log('Selected player ID:', selectedCaptain, 'type:', typeof selectedCaptain);
+      
+      // Parse IDs to integers
+      const teamIdInt = parseInt(selectedTeam);
+      const playerIdInt = parseInt(selectedCaptain);
+      
+      console.log(`Assigning player ${playerIdInt} as captain of team ${teamIdInt}`);
+      
+      // Create the payload
+      const payload = {
+        team_id: teamIdInt,
+        player_id: playerIdInt
+      };
+      
+      console.log('API payload:', payload);
+      
+      // Call the API to assign the captain
+      const response = await teamService.assignCaptain(payload);
+      
+      console.log('API response:', response);
+      
+      // Refresh the data
+      const teamsData = await teamService.getAdminTeams();
+      const playersData = await playerService.getAllPlayers();
+      
+      // Update state with fresh data
+      setTeams(teamsData);
+      setPlayers(playersData);
+      
+      // Update the local player lists
+      const updatedTeamPlayers = playersData.filter(player => {
+        // Follow the same logic as in the useEffect for team players
+        const team = teamsData.find(t => t.team_id === selectedTeam || t.team_id === String(selectedTeam));
+        const teamName = team?.team_name;
+        
+        if (player.teams && typeof player.teams === 'string' && teamName) {
+          return player.teams.includes(teamName);
+        }
+        
+        return player.team_id === parseInt(selectedTeam) || player.team_id === selectedTeam;
+      });
+      
+      setTeamPlayers(updatedTeamPlayers);
+      
+      // Show success message
+      const teamName = teamsData.find(t => t.team_id === selectedTeam || t.team_id === String(selectedTeam))?.team_name;
+      const playerName = playersData.find(p => p.player_id === parseInt(selectedCaptain))?.player_name || 
+                         playersData.find(p => p.player_id === selectedCaptain)?.player_name || 
+                         'Selected player';
+      
+      setSuccessMessage(`${playerName} assigned as captain of ${teamName} successfully!`);
+    } catch (error) {
+      console.error('Error assigning captain:', error);
+      setError('Failed to assign team captain. Please try again.');
+    }
     
     // Clear success message after 3 seconds
     setTimeout(() => {
@@ -497,11 +570,15 @@ const AdminTeams = () => {
               required
             >
               <option value="">Select a player</option>
-              {Array.isArray(teamPlayers) ? teamPlayers.map(player => (
-                <option key={player.player_id} value={player.player_id}>
-                  {player.name} {player.is_captain ? "(Current Captain)" : ""}
-                </option>
-              )) : <option key="no-players" value="">No players available</option>}
+              {Array.isArray(teamPlayers) && teamPlayers.length > 0 ? (
+                teamPlayers.map(player => (
+                  <option key={player.player_id} value={player.player_id}>
+                    {player.player_name || player.name || `Player ID: ${player.player_id}`}
+                  </option>
+                ))
+              ) : (
+                <option value="">No players available in this team.</option>
+              )}
             </select>
             {selectedTeam && teamPlayers.length === 0 && (
               <p className="mt-1 text-sm text-red-500">
@@ -558,11 +635,11 @@ const AdminTeams = () => {
                 </tr>
               ) : (
                 safeTeams.map((team) => {
-                  // Get captain
-                  const captain = safePlayers.find(p => p.team_id === team.team_id && p.is_captain);
+                  // Use the captain_id and captain_name from the team data
+                  // These values come directly from the team API response
                   
-                  // Get team players count
-                  const teamPlayersCount = safePlayers.filter(p => p.team_id === team.team_id).length;
+                  // Use the num_players field from the team data
+                  const teamPlayersCount = team.num_players ? parseInt(team.num_players) : 0;
                   
                   // Get tournaments this team is in from the team's tournaments array
                   const teamTournaments = team.tournaments ? 
@@ -582,8 +659,8 @@ const AdminTeams = () => {
                         <div className="text-xs text-gray-500">ID: {team.team_id}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {captain ? (
-                          <div className="text-sm text-gray-900">{captain.name}</div>
+                        {team.captain_name ? (
+                          <div className="text-sm text-gray-900">{team.captain_name}</div>
                         ) : (
                           <div className="text-sm text-red-500">No captain assigned</div>
                         )}

@@ -12,7 +12,7 @@ import Home from './pages/Home/Home';
 import Tournaments from './pages/Tournaments/Tournaments';
 import TournamentDetails from './pages/TournamentDetails/TournamentDetails';
 import Teams from './pages/Teams/Teams';
-import TeamDetails from './pages/TeamDetails/TeamDetails';
+import TeamMembers from './pages/Teams/TeamMembers';
 import MatchDetails from './pages/MatchDetails/MatchDetails';
 import Players from './pages/Players/Players';
 import PlayerDetails from './pages/PlayerDetails/PlayerDetails';
@@ -26,6 +26,7 @@ import AdminPlayers from './pages/Admin/Players';
 import MatchList from './pages/Admin/MatchManagement/MatchList';
 import MatchForm from './pages/Admin/MatchManagement/MatchForm';
 import AdminLeagueStandings from './pages/Admin/TournamentManagement/LeagueStandings';
+import TeamPlayers from './pages/Admin/TeamManagement/TeamPlayers';
 
 function App() {
   return (
@@ -50,7 +51,7 @@ function App() {
                 
                 {/* Team Routes */}
                 <Route path="teams" element={<Teams />} />
-                <Route path="teams/:id" element={<TeamDetails />} />
+                <Route path="teams/:id" element={<TeamMembers />} />
                 
                 {/* Match Routes */}
                 <Route path="matches/:id" element={<MatchDetails />} />
@@ -66,6 +67,7 @@ function App() {
                 <Route path="admin" element={<AdminDashboard />} />
                 <Route path="admin/tournaments" element={<AdminTournaments />} />
                 <Route path="admin/teams" element={<AdminTeams />} />
+                <Route path="admin/teams/:teamId/players" element={<TeamPlayers />} />
                 <Route path="admin/players" element={<AdminPlayers />} />
                 
                 {/* Match Management Routes */}
