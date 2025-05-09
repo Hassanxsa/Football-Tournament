@@ -165,10 +165,7 @@ router.get(
 );
 
 // 3) GET /api/players/:id/stats — aggregate goals, cards, matches, clean sheets
-router.get(
-  '/:id/stats',
-  passport.authenticate('jwt', { session: false }),
-  async (req, res) => {
+router.get('/:id/stats', async (req, res) => {
     const playerId = Number(req.params.id);
     if (Number.isNaN(playerId)) {
       return res.status(400).json({ error: 'Invalid player ID' });
