@@ -212,6 +212,83 @@ router.put(
   }
 );
 
+/**
+ * Record a new goal for a match
+ * POST /api/admin/matches/goals
+ */
+router.post(
+  '/goals',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const {
+      match_no,
+      player_id,
+      team_id,
+      goal_time,
+      goal_type,
+      play_stage,
+      goal_schedule,
+      goal_half
+    } = req.body;
+
+    // 1) basic validation
+    if (
+      !match_no ||
+      !player_id ||
+      !team_id ||
+      goal_time == null ||
+      !goal_type ||
+      !play_stage ||
+      !goal_schedule ||
+      goal_half == null
+    ) {
+      return res.status(400).json({ error: 'All goal fields are required.' });
+    }
+
+    try {
+      // 2) insert into goal_details
+      const insertSql = `
+        INSERT INTO public.goal_details
+          (match_no, player_id, team_id, goal_time, goal_type, play_stage, goal_schedule, goal_half)
+        VALUES
+          ($1,       $2,        $3,      $4,        $5,        $6,         $7,            $8)
+        RETURNING
+          goal_id,
+          match_no,
+          player_id,
+          team_id,
+          goal_time,
+          goal_type,
+          play_stage,
+          goal_schedule,
+          goal_half;
+      `;
+      const { rows } = await query(insertSql, [
+        parseInt(match_no, 10),
+        parseInt(player_id, 10),
+        parseInt(team_id, 10),
+        parseInt(goal_time, 10),
+        goal_type,
+        play_stage,
+        goal_schedule,
+        parseInt(goal_half, 10),
+      ]);
+
+      // 3) respond with the newly created goal record
+      return res.status(201).json({
+        message: 'Goal recorded successfully.',
+        goal: rows[0]
+      });
+    } catch (err) {
+      console.error('Error inserting goal:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
 
 
 
