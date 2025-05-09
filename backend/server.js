@@ -27,6 +27,7 @@ import adminUsersRoute from './routes/admin/users.js';
 import adminTournamentsRoute from './routes/admin/tournaments.js';
 import adminTeamsRoute from './routes/admin/teams.js';
 import adminPlayersRoute from './routes/admin/players.js';
+import adminMatchesRoute from './routes/admin/matches.js';
 
 
 
@@ -90,6 +91,9 @@ app.use('/api/admin/teams', adminTeamsRoute)
 
 // admin players management route
 app.use('/api/admin/players', adminPlayersRoute)
+
+// admin matches management route
+app.use('/api/admin/matches', adminMatchesRoute)
 
 
 

@@ -225,22 +225,7 @@ router.post('/:trId/recalculate-standings', passport.authenticate('jwt', { sessi
 });
 
 
-// Endpoint to manually trigger standings recalculation
-router.post('/:trId/recalculate-standings', passport.authenticate('jwt', { session: false }), checkAdmin, async (req, res) => {
-    const { trId } = req.params;
-    
-    try {
-      const success = await updateLeagueStandings(trId);
-      if (success) {
-        res.json({ message: 'Standings recalculated successfully' });
-      } else {
-        res.status(500).json({ message: 'Failed to recalculate standings' });
-      }
-    } catch (err) {
-      console.error('Error recalculating standings:', err);
-      res.status(500).json({ message: 'Failed to recalculate standings', error: err.message });
-    }
-  });
+
 
 
 export default router;
