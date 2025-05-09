@@ -480,7 +480,7 @@ const TournamentDetails = () => {
         )}
         
         {activeTab === 'standings' && (
-          <LeagueStandings />
+          <LeagueStandings tournamentId={id} />
         )}
       </div>
     </div>
