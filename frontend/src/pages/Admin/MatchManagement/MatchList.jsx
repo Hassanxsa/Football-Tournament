@@ -28,14 +28,20 @@ const MatchList = () => {
         let matchesData = [];
         if (trId) {
           // If tournament ID is provided, fetch matches for that tournament
-          matchesData = await matchService.getTournamentMatches(trId);
+          const fetchedMatches = await matchService.getTournamentMatches(trId);
+          // Add tournament ID to each match for filtering
+          matchesData = fetchedMatches.map(match => ({ ...match, tr_id: parseInt(trId, 10) }));
         } else {
           // Fetch all matches across tournaments
           matchesData = [];
           for (const tournament of tournamentsData) {
             try {
               const tournamentMatches = await matchService.getTournamentMatches(tournament.tr_id);
-              matchesData.push(...tournamentMatches);
+              // Add tournament ID to each match for filtering
+              matchesData.push(...tournamentMatches.map(match => ({ 
+                ...match, 
+                tr_id: parseInt(tournament.tr_id, 10) 
+              })));
             } catch (err) {
               console.error(`Error fetching matches for tournament ${tournament.tr_id}:`, err);
             }
