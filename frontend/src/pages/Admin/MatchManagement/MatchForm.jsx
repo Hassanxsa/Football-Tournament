@@ -1,6 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { tournamentService, matchService, playerService } from '../../../services/api';
+import { tournamentService, matchService, playerService, teamService } from '../../../services/api';
+
+// Helper function to render player options with correct text color
+const renderPlayerOption = (player) => {
+  console.log('Player data structure:', player);
+  
+  // Determine the correct player name property
+  // Checking all possible property names for player name
+  const playerName = player.name || player.player_name || player.full_name || player.fullName || `Player #${player.player_id || player.id}`;
+  
+  return (
+    <option 
+      key={player.player_id || player.id} 
+      value={player.player_id || player.id}
+      // Force black text on white background for visibility
+      style={{ color: '#000', backgroundColor: '#fff', fontWeight: 'bold' }}
+    >
+      {playerName}
+    </option>
+  );
+};
 
 const MatchForm = () => {
   const { trId, matchNo } = useParams(); // trId for tournament ID, matchNo for match ID when editing
@@ -102,6 +122,43 @@ const MatchForm = () => {
           if (matchData.team_id2) {
             fetchTeamPlayers(matchData.team_id2, setTeam2Players);
           }
+          
+          // Load existing goals and cards for this match
+          try {
+            // Fetch goals for this match
+            const goalsData = await matchService.getGoalDetails(matchNo);
+            console.log('Loaded goals data:', goalsData);
+            
+            if (Array.isArray(goalsData)) {
+              // Transform data into the format our UI expects
+              const formattedGoals = goalsData.map((goal, index) => ({
+                id: `goal_${index}`,
+                teamId: goal.team_id,
+                playerId: goal.player_id,
+                minute: goal.goal_minute || 0,
+                type: goal.goal_type || 'normal'
+              }));
+              setGoalScorers(formattedGoals);
+            }
+            
+            // Fetch cards for this match
+            const cardsData = await matchService.getPlayerBookings(matchNo);
+            console.log('Loaded cards data:', cardsData);
+            
+            if (Array.isArray(cardsData)) {
+              // Transform data into the format our UI expects
+              const formattedCards = cardsData.map((card, index) => ({
+                id: `card_${index}`,
+                teamId: card.team_id,
+                playerId: card.player_id,
+                cardType: card.color === 'r' ? 'red' : 'yellow',
+                minute: card.minute || 0
+              }));
+              setPlayerCards(formattedCards);
+            }
+          } catch (err) {
+            console.error('Error loading goals and cards:', err);
+          }
         }
         
         setLoading(false);
@@ -121,17 +178,17 @@ const MatchForm = () => {
     
     try {
       setLoading(true);
-      // In a real app, you would fetch players for this team from the API
-      // For now, we'll create mock data
-      const players = [
-        { player_id: `${teamId}_1`, player_name: `Player 1 (Team ${teamId})` },
-        { player_id: `${teamId}_2`, player_name: `Player 2 (Team ${teamId})` },
-        { player_id: `${teamId}_3`, player_name: `Player 3 (Team ${teamId})` },
-        { player_id: `${teamId}_4`, player_name: `Player 4 (Team ${teamId})` },
-        { player_id: `${teamId}_5`, player_name: `Player 5 (Team ${teamId})` },
-      ];
+      // Fetch actual players from the database using the API
+      const players = await teamService.getTeamPlayers(teamId);
+      console.log(`Loaded ${players.length} players for team ${teamId}:`, players);
       
-      setPlayersFn(players);
+      // Make sure we have valid player data
+      if (Array.isArray(players) && players.length > 0) {
+        setPlayersFn(players);
+      } else {
+        console.warn(`No players found for team ${teamId}`);
+        setPlayersFn([]);
+      }
       setLoading(false);
     } catch (err) {
       console.error('Error fetching team players:', err);
@@ -633,13 +690,21 @@ const MatchForm = () => {
               <option value="">Select Player</option>
               {/* Add players from both teams */}
               {team1Players.map(player => (
-                <option key={`t1_${player.player_id}`} value={player.player_id}>
-                  {player.player_name} (Home)
+                <option 
+                  key={`t1_${player.player_id || player.id}`} 
+                  value={player.player_id || player.id}
+                  style={{ color: '#000', backgroundColor: '#fff', fontWeight: 'bold' }}
+                >
+                  {player.name || player.player_name || player.full_name || player.fullName || `Player #${player.player_id || player.id}`} (Home)
                 </option>
               ))}
               {team2Players.map(player => (
-                <option key={`t2_${player.player_id}`} value={player.player_id}>
-                  {player.player_name} (Away)
+                <option 
+                  key={`t2_${player.player_id || player.id}`} 
+                  value={player.player_id || player.id}
+                  style={{ color: '#000', backgroundColor: '#fff', fontWeight: 'bold' }}
+                >
+                  {player.name || player.player_name || player.full_name || player.fullName || `Player #${player.player_id || player.id}`} (Away)
                 </option>
               ))}
             </select>
@@ -678,34 +743,26 @@ const MatchForm = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Player</label>
+                <label className="block text-sm font-medium text-black-700 mb-1">Player</label>
                 <select
                   name="playerId"
                   value={newGoal.playerId}
                   onChange={handleGoalChange}
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className="w-full p-2 border border-black-300 rounded-md text-black bg-white font-bold"
                   disabled={!newGoal.teamId}
                 >
                   <option value="">Select Player</option>
                   {newGoal.teamId === formData.team_id1 && 
-                    team1Players.map(player => (
-                      <option key={player.player_id} value={player.player_id}>
-                        {player.player_name}
-                      </option>
-                    ))
+                    team1Players.map(player => renderPlayerOption(player))
                   }
                   {newGoal.teamId === formData.team_id2 && 
-                    team2Players.map(player => (
-                      <option key={player.player_id} value={player.player_id}>
-                        {player.player_name}
-                      </option>
-                    ))
+                    team2Players.map(player => renderPlayerOption(player))
                   }
                 </select>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Minute</label>
+                <label className="block text-sm font-medium text-black-700 mb-1">Minute</label>
                 <input
                   type="number"
                   name="minute"
@@ -714,7 +771,7 @@ const MatchForm = () => {
                   placeholder="When scored"
                   min="1"
                   max="120"
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className="w-full p-2 border border-black-300 rounded-md"
                 />
               </div>
               
@@ -812,18 +869,10 @@ const MatchForm = () => {
                 >
                   <option value="">Select Player</option>
                   {newCard.teamId === formData.team_id1 && 
-                    team1Players.map(player => (
-                      <option key={player.player_id} value={player.player_id}>
-                        {player.player_name}
-                      </option>
-                    ))
+                    team1Players.map(player => renderPlayerOption(player))
                   }
                   {newCard.teamId === formData.team_id2 && 
-                    team2Players.map(player => (
-                      <option key={player.player_id} value={player.player_id}>
-                        {player.player_name}
-                      </option>
-                    ))
+                    team2Players.map(player => renderPlayerOption(player))
                   }
                 </select>
               </div>
