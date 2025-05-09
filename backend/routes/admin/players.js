@@ -155,6 +155,43 @@ router.post(
       }
     }
   );
+
+  // add a yellow / red card to a player
+  router.post(
+  '/:id/cards',
+  passport.authenticate('jwt', { session: false }),
+  checkAdmin,
+  async (req, res) => {
+    const player_id = parseInt(req.params.id, 10);
+    const { color, minute, match_no } = req.body;
+
+    // 1) Validate
+    if (!color || minute == null || !match_no) {
+      return res
+        .status(400)
+        .json({ error: 'color, minute and match_no are required' });
+    }
+
+    try {
+      // 2) Insert into card table
+      const sql = `
+        INSERT INTO public.card
+          (color, minute, player_id, match_no)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, color, minute, player_id, match_no;
+      `;
+      const params = [color, parseInt(minute, 10), player_id, parseInt(match_no, 10)];
+      const { rows } = await query(sql, params);
+
+      // 3) Respond with the created card
+      return res.status(201).json(rows[0]);
+    } catch (err) {
+      console.error('Error creating card:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
   
   
 
