@@ -313,8 +313,31 @@ export const matchService = {
   },
   
   getMatchById: async (id) => {
-    const response = await api.get(`/api/matches/${id}`);
-    return response.data;
+    try {
+      // Get basic match data
+      const response = await api.get(`/api/matches/${id}`);
+      const matchData = response.data;
+      
+      // Additional query to find the tournament ID 
+      // (The current backend endpoint doesn't return tr_id directly)
+      if (matchData.team_id1) {
+        try {
+          // Try to find tournament by looking at tournament_team entries
+          const teamResponse = await api.get(`/api/teams/${matchData.team_id1}/tournaments`);
+          if (teamResponse.data && teamResponse.data.length > 0) {
+            // Use the first tournament ID we find
+            matchData.tr_id = teamResponse.data[0].tr_id;
+          }
+        } catch (err) {
+          console.warn('Could not fetch tournament ID for match:', err);
+        }
+      }
+      
+      return matchData;
+    } catch (error) {
+      console.error('Error fetching match data:', error);
+      throw error;
+    }
   },
   
   // Get match details (enhanced)
@@ -338,7 +361,8 @@ export const matchService = {
   
   // Update match details (admin only)
   updateMatch: async (matchId, matchData) => {
-    const response = await api.put(`/api/matches/${matchId}`, matchData);
+    console.log('Updating match with ID:', matchId, 'and data:', matchData);
+    const response = await api.put(`/api/admin/matches/${matchId}`, matchData);
     return response.data;
   },
   
