@@ -112,11 +112,11 @@ const TeamDetails = () => {
         <div className="text-center">
           <div className="text-yellow-500 mb-4">
             <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Team Not Found</h2>
-          <p className="text-gray-600">The team you are looking for does not exist or has been removed.</p>
+          <p className="text-gray-600">The team you're looking for could not be found.</p>
           <Link 
             to="/teams" 
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-block"
@@ -139,7 +139,7 @@ const TeamDetails = () => {
   }, {});
   
   // Sort positions in logical order: GK, DF, MF, FD
-  const positionOrder = { 'Goalkeepers': 1, 'Defenders': 2, 'Midfielders': 3, 'Forwards': 4 };
+  const positionOrder = { 'Goalkeeper': 1, 'Defender': 2, 'Midfielder': 3, 'Forward': 4 };
   const sortedPositions = Object.keys(playersByPosition).sort((a, b) => {
     return (positionOrder[a] || 99) - (positionOrder[b] || 99);
   });
@@ -200,11 +200,25 @@ const TeamDetails = () => {
             {/* Team Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Team Details</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Team Information</h3>
                 <dl>
                   <div className="py-2 grid grid-cols-3 gap-4">
                     <dt className="text-sm font-medium text-gray-500">Name:</dt>
                     <dd className="text-sm text-gray-900 col-span-2">{team.team_name}</dd>
+                  </div>
+                  <div className="py-2 grid grid-cols-3 gap-4">
+                    <dt className="text-sm font-medium text-gray-500">Status:</dt>
+                    <dd className="text-sm text-gray-900 col-span-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        (team.status === 'active' || team.status === 'Active') ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {team.status || 'Active'}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="py-2 grid grid-cols-3 gap-4">
+                    <dt className="text-sm font-medium text-gray-500">Captain:</dt>
+                    <dd className="text-sm text-gray-900 col-span-2">{team.captain_name || 'None assigned'}</dd>
                   </div>
                   {team.team_group && (
                     <div className="py-2 grid grid-cols-3 gap-4">
@@ -250,6 +264,7 @@ const TeamDetails = () => {
                 </div>
               </div>
               
+              {/* Top Players */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Top Players</h3>
                 {players.slice(0, 5).map((player, index) => (
@@ -258,12 +273,19 @@ const TeamDetails = () => {
                       <span className="text-sm font-medium">{player.jersey_no || index + 1}</span>
                     </div>
                     <div>
-                      <Link 
-                        to={`/players/${player.player_id}`}
-                        className="text-sm font-medium text-gray-900 hover:text-blue-600"
-                      >
-                        {player.name}
-                      </Link>
+                      <div className="flex items-center">
+                        <Link 
+                          to={`/players/${player.player_id}`}
+                          className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                        >
+                          {player.name}
+                        </Link>
+                        {player.player_id === team.captain_id || String(player.player_id) === String(team.captain_id) ? (
+                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Captain
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="text-xs text-gray-500">
                         {player.position_desc || 'Unknown position'} · {calculateAge(player.date_of_birth)} years
                       </p>
@@ -312,29 +334,39 @@ const TeamDetails = () => {
                         GA
                       </th>
                       <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        GD
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pts
+                        PTS
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {tournaments.map((tournament, index) => (
-                      <tr key={tournament.tr_id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    {tournaments.map((tournament) => (
+                      <tr key={tournament.tr_id}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Link to={`/tournaments/${tournament.tr_id}`} className="text-sm font-medium text-gray-900 hover:text-blue-600">
+                          <Link to={`/tournaments/${tournament.tr_id}`} className="text-blue-600 hover:text-blue-900">
                             {tournament.tr_name}
                           </Link>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.match_played || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.won || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.draw || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.lost || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.goal_for || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.goal_against || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{tournament.goal_diff || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">{tournament.points || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                          {tournament.matches_played || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                          {tournament.wins || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                          {tournament.draws || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                          {tournament.losses || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                          {tournament.goals_for || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                          {tournament.goals_against || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                          {tournament.points || 0}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -345,58 +377,42 @@ const TeamDetails = () => {
         )}
         
         {activeTab === 'players' && (
-          <div className="space-y-8">
-            <div className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-900">Team Squad</h2>
+          <div>
+            <div className="mb-6 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-800">Team Players</h2>
               <div className="flex items-center">
-                <label htmlFor="redCardFilter" className="mr-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  id="showRedCardPlayers"
+                  checked={showRedCardPlayersOnly}
+                  onChange={() => setShowRedCardPlayersOnly(!showRedCardPlayersOnly)}
+                  className="mr-2"
+                />
+                <label htmlFor="showRedCardPlayers" className="text-sm text-gray-600">
                   Show players with red cards only
-                </label>
-                <label className="inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    id="redCardFilter"
-                    className="sr-only peer" 
-                    checked={showRedCardPlayersOnly}
-                    onChange={() => setShowRedCardPlayersOnly(!showRedCardPlayersOnly)}
-                  />
-                  <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                 </label>
               </div>
             </div>
-            {sortedPositions.map(position => {
-              // Filter players in this position based on red card filter
-              const filteredPlayers = showRedCardPlayersOnly 
+            
+            {sortedPositions.map((position) => {
+              const positionPlayers = showRedCardPlayersOnly 
                 ? playersByPosition[position].filter(player => player.red_cards > 0)
                 : playersByPosition[position];
                 
-              // Only show position group if there are players to display after filtering
-              if (filteredPlayers.length === 0) return null;
+              if (positionPlayers.length === 0) return null;
               
               return (
-                <div key={position} className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {position} 
-                      {showRedCardPlayersOnly && filteredPlayers.length > 0 && (
-                        <span className="ml-2 text-sm text-red-600 font-normal">
-                          ({filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''} with red cards)
-                        </span>
-                      )}
-                    </h3>
-                  </div>
-                  <div className="overflow-x-auto">
+                <div key={position} className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">{position}</h3>
+                  <div className="bg-white shadow overflow-hidden rounded-lg">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            #
+                            Player
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Position
+                          <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Age
                           </th>
                           <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Goals
@@ -412,17 +428,35 @@ const TeamDetails = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredPlayers.map((player, index) => (
-                        <tr key={player.player_id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {player.jersey_no || '-'}
+                      <tbody>
+                      {positionPlayers.map((player, index) => (
+                        <tr key={player.player_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                <span className="text-gray-700 font-medium">
+                                  {(player.name || '').charAt(0)}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="flex items-center">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {player.name}
+                                  </div>
+                                  {player.player_id === team.captain_id || String(player.player_id) === String(team.captain_id) ? (
+                                    <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                      Captain
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {player.jersey_no ? `#${player.jersey_no}` : ''}{player.position_desc ? ` · ${player.position_desc}` : ''}
+                                </div>
+                              </div>
+                            </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {player.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {player.position_to_play || '-'}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                            {calculateAge(player.date_of_birth)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                             {player.goals}

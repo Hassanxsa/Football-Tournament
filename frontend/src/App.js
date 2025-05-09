@@ -12,7 +12,7 @@ import Home from './pages/Home/Home';
 import Tournaments from './pages/Tournaments/Tournaments';
 import TournamentDetails from './pages/TournamentDetails/TournamentDetails';
 import Teams from './pages/Teams/Teams';
-import TeamDetails from './pages/TeamDetails/TeamDetails';
+import TeamMembers from './pages/Teams/TeamMembers';
 import MatchDetails from './pages/MatchDetails/MatchDetails';
 import Players from './pages/Players/Players';
 import PlayerDetails from './pages/PlayerDetails/PlayerDetails';
@@ -51,7 +51,7 @@ function App() {
                 
                 {/* Team Routes */}
                 <Route path="teams" element={<Teams />} />
-                <Route path="teams/:id" element={<TeamDetails />} />
+                <Route path="teams/:id" element={<TeamMembers />} />
                 
                 {/* Match Routes */}
                 <Route path="matches/:id" element={<MatchDetails />} />
