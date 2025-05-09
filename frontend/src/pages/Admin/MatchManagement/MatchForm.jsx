@@ -35,7 +35,7 @@ const MatchForm = () => {
     decided_by: 'N', // Normal play
     goal_score: '0-0', // Default score
     audience: 0,
-    player_of_match: 123456789, // Default to system user ID
+    player_of_match: null, // Always null as required
     stop1_sec: 0,
     stop2_sec: 0,
     tr_id: trId || ''
@@ -227,74 +227,184 @@ const MatchForm = () => {
       setSubmitting(true);
       setError(null);
       
-      // Extract the scores from goal_score string if present
-      let goal_score1 = 0;
-      let goal_score2 = 0;
+      // SIMPLIFY: Use direct values from goal_score field
+      let goal_score1 = null;
+      let goal_score2 = null;
+      let matchResult = null;
       
-      // Count goals by team to determine the score
-      if (goalScorers.length > 0) {
-        goal_score1 = goalScorers.filter(g => g.teamId === formData.team_id1).length;
-        goal_score2 = goalScorers.filter(g => g.teamId === formData.team_id2).length;
+      // Use the goal_score field directly from the form
+      if (formData.goal_score && formData.goal_score !== '0-0' && formData.goal_score !== 'N/A') {
+        const scoreParts = formData.goal_score.split('-');
+        if (scoreParts.length === 2) {
+          goal_score1 = parseInt(scoreParts[0], 10) || 0;
+          goal_score2 = parseInt(scoreParts[1], 10) || 0;
+          console.log('DIRECT SCORE:', goal_score1, '-', goal_score2);
+          
+          // Determine result based on these scores
+          if (goal_score1 > goal_score2) {
+            matchResult = 'WIN';
+          } else if (goal_score1 < goal_score2) {
+            matchResult = 'LOSS';
+          } else {
+            matchResult = 'DRAW';
+          }
+        }
+      } else {
+        // If no manual score, calculate from goal scorers
+        if (goalScorers.length > 0) {
+          goal_score1 = goalScorers.filter(g => g.teamId === formData.team_id1).length;
+          goal_score2 = goalScorers.filter(g => g.teamId === formData.team_id2).length;
+          console.log('Calculated scores from goal scorers:', goal_score1, goal_score2);
+          
+          // Determine result based on these scores
+          if (goal_score1 > goal_score2) {
+            matchResult = 'WIN';
+          } else if (goal_score1 < goal_score2) {
+            matchResult = 'LOSS';
+          } else {
+            matchResult = 'DRAW';
+          }
+        }
       }
       
-      // Determine the result based on goal scores
-      let matchResult;
-      if (goal_score1 > goal_score2) {
-        matchResult = 'WIN';
-      } else if (goal_score1 < goal_score2) {
-        matchResult = 'LOSS';
-      } else {
-        matchResult = 'DRAW';
+      // Ensure we have valid score values (use 0 instead of null)
+      goal_score1 = goal_score1 !== null ? goal_score1 : 0;
+      goal_score2 = goal_score2 !== null ? goal_score2 : 0;
+      
+      // Force the result to have a value if both scores are set
+      if (goal_score1 !== null && goal_score2 !== null) {
+        if (matchResult === null) {
+          if (goal_score1 > goal_score2) {
+            matchResult = 'WIN';
+          } else if (goal_score1 < goal_score2) {
+            matchResult = 'LOSS';
+          } else {
+            matchResult = 'DRAW';
+          }
+        }
+      }
+      
+      // If match is unplayed, result should be null
+      if (formData.results === 'N/A') {
+        matchResult = null;
       }
       
       if (isEditMode) {
-        // Update existing match with goal and card data
+        // IMPORTANT: Match field names exactly as backend expects
+        // Extract scores from the goal_score field
+        const [gs1, gs2] = formData.goal_score.split('-').map(num => parseInt(num, 10) || 0);
+        
         const matchPayload = {
-          ...formData,
-          goal_score1,
-          goal_score2,
-          result: matchResult,  // Use the matchResult variable here
-          decided_by: 'N', // Normal play
-          goalScorers: goalScorers.map(g => ({
-            playerId: g.playerId,
-            teamId: g.teamId,
-            minute: g.minute,
-            type: g.type || 'N' // Normal goal type
-          })),
-          playerCards: playerCards.map(c => ({
-            playerId: c.playerId, 
-            teamId: c.teamId,
-            cardType: c.cardType,
-            minute: c.minute
-          }))
+          play_date: formData.play_date,
+          team_id1: parseInt(formData.team_id1, 10),
+          team_id2: parseInt(formData.team_id2, 10),
+          venue_id: parseInt(formData.venue_id, 10),
+          audience: formData.audience ? parseInt(formData.audience, 10) : 0,
+          player_of_match: null, // ALWAYS NULL to avoid foreign key constraint errors
+          stop1_sec: formData.stop1_sec ? parseInt(formData.stop1_sec, 10) : 0,
+          stop2_sec: formData.stop2_sec ? parseInt(formData.stop2_sec, 10) : 0,
+          decided_by: 'N',
+          // These are required by the backend to compute the goal_score
+          goal_score1: gs1,
+          goal_score2: gs2,
+          // Match the field name in the backend code: result not results
+          result: formData.results !== 'N/A' ? formData.results : matchResult,
+          tr_id: parseInt(formData.tr_id, 10)
         };
         
+        console.log('Updating match with payload:', matchPayload);
         await matchService.updateMatch(matchNo, matchPayload);
         setSuccessMessage('Match updated successfully!');
+        
+        // Record goals and cards if present
+        if (goalScorers.length > 0 || playerCards.length > 0) {
+          await recordGoalsAndCards(matchNo);
+        }
       } else {
-        // Create new match with goal and card data
+        // IMPORTANT: Match field names exactly as the backend expects them
+        // Extract scores from the goal_score field
+        const [gs1, gs2] = formData.goal_score.split('-').map(num => parseInt(num, 10) || 0);
+        
         const matchPayload = {
-          ...formData,
-          goal_score1,
-          goal_score2,
-          result: matchResult,  // Use the matchResult variable here
-          decided_by: 'N', // Normal play
-          goalScorers: goalScorers.map(g => ({
-            playerId: g.playerId,
-            teamId: g.teamId,
-            minute: g.minute,
-            type: g.type || 'N' // Default to normal goal type if not specified
-          })),
-          playerCards: playerCards.map(c => ({
-            playerId: c.playerId, 
-            teamId: c.teamId,
-            cardType: c.cardType,
-            minute: c.minute
-          }))
+          play_date: formData.play_date,
+          team_id1: parseInt(formData.team_id1, 10),
+          team_id2: parseInt(formData.team_id2, 10),
+          venue_id: parseInt(formData.venue_id, 10),
+          audience: formData.audience ? parseInt(formData.audience, 10) : 0,
+          player_of_match: null, // ALWAYS NULL to avoid foreign key constraint errors
+          stop1_sec: 0,
+          stop2_sec: 0,
+          decided_by: 'N',
+          // These are required by the backend to compute the goal_score
+          goal_score1: gs1, 
+          goal_score2: gs2,
+          // Match the field name in the backend code: result not results
+          result: formData.results !== 'N/A' ? formData.results : matchResult,
+          tr_id: parseInt(formData.tr_id, 10)
         };
         
+        console.log('Creating match with payload:', matchPayload);
         const response = await matchService.createMatch(formData.tr_id, matchPayload);
-        setSuccessMessage(`Match created successfully! Match #${response.match_no}`);
+        const matchNo = response.match_no;
+        
+        // If we have goals or cards, record them
+        if (goalScorers.length > 0 || playerCards.length > 0) {
+          await recordGoalsAndCards(matchNo);
+        }
+        
+        setSuccessMessage(`Match created successfully! Match #${matchNo}`);
+      }
+      
+      // Helper function to record goals and cards
+      async function recordGoalsAndCards(matchNo) {
+        // Record goals
+        const goalPromises = [];
+        if (goalScorers.length > 0) {
+          for (const goal of goalScorers) {
+            const goalPromise = matchService.recordGoal({
+              match_no: parseInt(matchNo, 10),
+              player_id: parseInt(goal.playerId, 10),
+              team_id: parseInt(goal.teamId, 10),
+              goal_time: parseInt(goal.minute, 10),
+              goal_type: goal.type || 'N', // Default to Normal
+              play_stage: 'G', // Default to Group stage
+              goal_schedule: 'NT', // Normal time
+              goal_half: parseInt(goal.minute, 10) <= 45 ? 1 : 2 // Determine half based on minute
+            }).catch(err => {
+              console.error('Error recording goal:', err);
+              return null; // Continue with other goals even if one fails
+            });
+            
+            goalPromises.push(goalPromise);
+          }
+        }
+        
+        // Record cards
+        const cardPromises = [];
+        if (playerCards.length > 0) {
+          for (const card of playerCards) {
+            // Card color must be 'y' for yellow or 'r' for red (single lowercase letter)
+            let cardColor = 'y'; // Default to yellow
+            if (card.cardType === 'red') {
+              cardColor = 'r';
+            }
+            
+            const cardPromise = matchService.recordPlayerCard({
+              match_no: parseInt(matchNo, 10),
+              player_id: parseInt(card.playerId, 10),
+              color: cardColor,
+              minute: parseInt(card.minute, 10)
+            }).catch(err => {
+              console.error('Error recording player card:', err);
+              return null; // Continue with other cards even if one fails
+            });
+            
+            cardPromises.push(cardPromise);
+          }
+        }
+        
+        // Wait for all goals and cards to be recorded
+        return Promise.allSettled([...goalPromises, ...cardPromises]);
       }
       
       // Redirect after successful submission
