@@ -35,12 +35,12 @@ router.post(
       tr_id
     } = req.body;
 
-    // 1) basic validation
-    if (!play_date || !team_id1 || !team_id2 || !result || !decided_by
-      || goal_score1 == null || goal_score2 == null
-      || !venue_id || !tr_id) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    // // 1) basic validation
+    // if (!play_date || !team_id1 || !team_id2 || !result || !decided_by
+    //   || goal_score1 == null || goal_score2 == null
+    //   || !venue_id || !tr_id) {
+    //   return res.status(400).json({ error: 'Missing required fields' });
+    // }
 
     try {
       // 2) fetch next match_no
@@ -139,12 +139,12 @@ router.put(
       tr_id
     } = req.body;
 
-    // 1) basic validation
-    if (!play_date || !team_id1 || !team_id2 || !result || !decided_by
-        || goal_score1 == null || goal_score2 == null
-        || !venue_id || !tr_id) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    // // 1) basic validation
+    // if (!play_date || !team_id1 || !team_id2 || !result || !decided_by
+    //     || goal_score1 == null || goal_score2 == null
+    //     || !venue_id || !tr_id) {
+    //   return res.status(400).json({ error: 'Missing required fields' });
+    // }
 
     // 2) derive W/D/L flags for each side
     let wl1, wl2;
