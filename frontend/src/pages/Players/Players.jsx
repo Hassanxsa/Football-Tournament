@@ -23,8 +23,30 @@ const Players = () => {
           searchParams.position = filterPosition;
         }
         
+        // Get players with their stats
         const data = await playerService.getAllPlayers(searchParams);
-        setPlayers(data);
+        
+        // Get goal stats for each player
+        const playersWithGoals = await Promise.all(data.map(async (player) => {
+          try {
+            const stats = await playerService.getPlayerStats(player.player_id);
+            return {
+              ...player,
+              goals: stats.goals || 0
+            };
+          } catch (err) {
+            console.error(`Error fetching stats for player ${player.player_id}:`, err);
+            return {
+              ...player,
+              goals: 0
+            };
+          }
+        }));
+        
+        // Sort players by goals (highest first)
+        const sortedPlayers = playersWithGoals.sort((a, b) => b.goals - a.goals);
+        
+        setPlayers(sortedPlayers);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching players:', err);
@@ -155,15 +177,12 @@ const Players = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {players.map(player => (
             <div key={player.player_id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition-shadow duration-200">
-              <div className="bg-blue-50 p-4 flex justify-between items-center">
+              <div className="bg-blue-50 p-4">
                 <div>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     {player.position}
                   </span>
                   <p className="text-sm text-gray-500 mt-1">Player ID: {player.player_id}</p>
-                </div>
-                <div className="h-14 w-14 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-xl font-bold text-gray-600">{player.player_name ? player.player_name.charAt(0) : '?'}</span>
                 </div>
               </div>
               
@@ -182,7 +201,7 @@ const Players = () => {
                     <span className="font-medium text-gray-900">Age:</span> {player.age ? `${player.age} years` : 'Unknown'}
                   </p>
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-900">Date of Birth:</span> {player.date_of_birth ? new Date(player.date_of_birth).toLocaleDateString() : 'Unknown'}
+                    <span className="font-medium text-gray-900">Goals:</span> {player.goals !== undefined ? player.goals : 'Unknown'}
                   </p>
                 </div>
                 <div className="mt-4">

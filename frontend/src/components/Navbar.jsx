@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import PlayerRequestDialog from './PlayerRequestDialog';
+import RoleSelectionDialog from './RoleSelectionDialog';
 
 const Navbar = () => {
   const location = useLocation();
@@ -8,6 +9,7 @@ const Navbar = () => {
   const [playerRequestSent, setPlayerRequestSent] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showPlayerRequestDialog, setShowPlayerRequestDialog] = useState(false);
+  const [showRoleSelectionDialog, setShowRoleSelectionDialog] = useState(false);
   
   useEffect(() => {
     // Check if user is authenticated
@@ -38,6 +40,11 @@ const Navbar = () => {
   const handlePlayerRequest = () => {
     // Show the player request dialog
     setShowPlayerRequestDialog(true);
+  };
+  
+  const handleRoleSelection = () => {
+    // Show the role selection dialog
+    setShowRoleSelectionDialog(true);
   };
   
   const handleLogout = () => {
@@ -140,6 +147,15 @@ const Navbar = () => {
                 </button>
               )}
               
+              {isAuthenticated && (
+                <button
+                  onClick={handleRoleSelection}
+                  className="mr-4 px-3 py-1 rounded-md text-sm font-medium bg-black hover:bg-gray-800 text-white"
+                >
+                  Join as Manager/Coach
+                </button>
+              )}
+              
               <button className="bg-blue-700 p-1 rounded-full text-blue-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-white">
                 <span className="sr-only">View notifications</span>
                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -163,6 +179,24 @@ const Navbar = () => {
                 
                 {showDropdown && (
                   <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    {!playerRequestSent && isAuthenticated && (
+                      <button
+                        onClick={handlePlayerRequest}
+                        className="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        Become a Player
+                      </button>
+                    )}
+                    
+                    {isAuthenticated && (
+                      <button
+                        onClick={handleRoleSelection}
+                        className="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                      >
+                        Become Manager/Coach
+                      </button>
+                    )}
+                    
                     {isAuthenticated ? (
                       <button
                         onClick={handleLogout}
@@ -224,6 +258,12 @@ const Navbar = () => {
       <PlayerRequestDialog 
         isOpen={showPlayerRequestDialog} 
         onClose={() => setShowPlayerRequestDialog(false)} 
+      />
+      
+      {/* Role Selection Dialog */}
+      <RoleSelectionDialog
+        isOpen={showRoleSelectionDialog}
+        onClose={() => setShowRoleSelectionDialog(false)}
       />
     </nav>
   );
