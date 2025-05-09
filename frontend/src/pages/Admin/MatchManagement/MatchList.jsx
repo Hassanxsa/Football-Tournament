@@ -28,14 +28,20 @@ const MatchList = () => {
         let matchesData = [];
         if (trId) {
           // If tournament ID is provided, fetch matches for that tournament
-          matchesData = await matchService.getTournamentMatches(trId);
+          const fetchedMatches = await matchService.getTournamentMatches(trId);
+          // Add tournament ID to each match for filtering
+          matchesData = fetchedMatches.map(match => ({ ...match, tr_id: parseInt(trId, 10) }));
         } else {
           // Fetch all matches across tournaments
           matchesData = [];
           for (const tournament of tournamentsData) {
             try {
               const tournamentMatches = await matchService.getTournamentMatches(tournament.tr_id);
-              matchesData.push(...tournamentMatches);
+              // Add tournament ID to each match for filtering
+              matchesData.push(...tournamentMatches.map(match => ({ 
+                ...match, 
+                tr_id: parseInt(tournament.tr_id, 10) 
+              })));
             } catch (err) {
               console.error(`Error fetching matches for tournament ${tournament.tr_id}:`, err);
             }
@@ -67,13 +73,13 @@ const MatchList = () => {
     }
     
     // Filter by search term (team names, venue, etc.)
+    // Note: Backend returns team_name1 and team_name2 (not team1_name and team2_name)
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       return (
-        match.team1_name?.toLowerCase().includes(term) ||
-        match.team2_name?.toLowerCase().includes(term) ||
-        match.venue_name?.toLowerCase().includes(term) ||
-        (match.tournament_name && match.tournament_name.toLowerCase().includes(term))
+        match.team_name1?.toLowerCase().includes(term) ||
+        match.team_name2?.toLowerCase().includes(term) ||
+        match.venue_name?.toLowerCase().includes(term)
       );
     }
     
@@ -211,7 +217,7 @@ const MatchList = () => {
                     <div className="flex flex-col md:flex-row md:items-center">
                       <p className="text-sm font-medium text-blue-600 truncate mr-2">
                         <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded mr-2">
-                          {getStageName(match.play_stage)}
+                          {match.status === 'completed' ? 'Completed' : 'Scheduled'}
                         </span>
                         {formatDate(match.play_date)}
                       </p>
@@ -238,7 +244,7 @@ const MatchList = () => {
                     <div className="sm:flex sm:items-center bg-gray-50 p-3 rounded-md w-full">
                       <div className="flex items-center justify-between w-full">
                         <div className="flex items-center w-5/12 justify-end">
-                          <span className="text-lg font-bold">{match.team1_name}</span>
+                          <span className="text-lg font-bold">{match.team_name1}</span>
                         </div>
                         
                         <div className="flex items-center justify-center w-2/12">
@@ -248,7 +254,7 @@ const MatchList = () => {
                         </div>
                         
                         <div className="flex items-center w-5/12">
-                          <span className="text-lg font-bold">{match.team2_name}</span>
+                          <span className="text-lg font-bold">{match.team_name2}</span>
                         </div>
                       </div>
                     </div>

@@ -67,42 +67,36 @@ const LeagueStandings = () => {
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [recalculatingStandings, setRecalculatingStandings] = useState(false);
+
 
   useEffect(() => {
-    // Simulate API delay
-    const timer = setTimeout(() => {
+    const fetchStandings = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
-        // Use mock data instead of API calls
-        const mockTournament = getMockTournament(id);
-        const mockStandings = generateMockStandings(id);
+        // Get tournament data
+        const tournamentData = await tournamentService.getTournamentById(id);
+        setTournament(tournamentData);
         
-        setTournament(mockTournament);
-        setStandings(mockStandings);
+        // Get standings data from the backend API
+        const standingsData = await tournamentService.getTournamentStandings(id);
+        console.log('Retrieved standings data:', standingsData);
+        
+        // Set standings data
+        setStandings(standingsData);
         setLoading(false);
       } catch (err) {
-        console.error('Error generating mock data:', err);
+        console.error('Error fetching standings:', err);
         setError('Failed to load standings. Please try again.');
         setLoading(false);
       }
-    }, 800); // Simulate network delay
+    };
     
-    return () => clearTimeout(timer);
+    fetchStandings();
   }, [id]);
 
-  const handleRecalculateStandings = () => {
-    if (recalculatingStandings) return;
-    
-    setRecalculatingStandings(true);
-    
-    // Simulate recalculation with a delay
-    setTimeout(() => {
-      // Generate new mock standings after "recalculation"
-      const refreshedStandings = generateMockStandings(id);
-      setStandings(refreshedStandings);
-      setRecalculatingStandings(false);
-    }, 1500);
-  };
+
   
   // For development/testing - log to console when component mounts
   useEffect(() => {
@@ -128,19 +122,8 @@ const LeagueStandings = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          {tournament?.tr_name} - League Standings
-        </h1>
-        <button
-          onClick={handleRecalculateStandings}
-          disabled={recalculatingStandings}
-          className={`px-4 py-2 rounded text-white ${
-            recalculatingStandings ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-        >
-          {recalculatingStandings ? 'Recalculating...' : 'Recalculate Standings'}
-        </button>
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800">{tournament ? `${tournament.tr_name} - League Standings` : 'League Standings'}</h2>
       </div>
 
       {standings.length === 0 ? (
