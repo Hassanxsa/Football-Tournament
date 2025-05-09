@@ -329,9 +329,10 @@ export const matchService = {
     return response.data;
   },
   
-  // Create a new match in a tournament (admin only)
+  // Create a new match in a tournament (admin only) - pass data directly without processing
   createMatch: async (tournamentId, matchData) => {
-    const response = await api.post(`/api/tournaments/${tournamentId}/matches`, matchData);
+    console.log('API service - Raw match payload:', matchData);
+    const response = await api.post('/api/admin/matches', matchData);
     return response.data;
   },
   
@@ -344,6 +345,23 @@ export const matchService = {
   // Get venues for match creation/editing
   getVenues: async () => {
     const response = await api.get('/api/venues');
+    return response.data;
+  },
+  
+  // Record a goal for a player in a match
+  recordGoal: async (goalData) => {
+    const response = await api.post('/api/admin/matches/goals', goalData);
+    return response.data;
+  },
+  
+  // Record a card (yellow/red) for a player
+  recordPlayerCard: async (cardData) => {
+    // Per backend implementation, the endpoint is /api/admin/players/:id/cards
+    const response = await api.post(`/api/admin/players/${cardData.player_id}/cards`, {
+      match_no: cardData.match_no,
+      color: cardData.color, // 'y' or 'r'
+      minute: cardData.minute
+    });
     return response.data;
   },
   
