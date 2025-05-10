@@ -274,12 +274,14 @@ export const playerService = {
   },
   
   approvePlayerRequest: async (requestId) => {
-    const response = await api.post(`/api/admin/players/approve/${requestId}`);
+    // tr_id is required for accepting - using a default value of 1 for now
+    // This should be updated to use the actual tournament ID if needed
+    const response = await api.put(`/api/admin/join-requests/${requestId}`, { status: 'accepted', tr_id: 1 });
     return response.data;
   },
   
   rejectPlayerRequest: async (requestId) => {
-    const response = await api.post(`/api/admin/players/reject/${requestId}`);
+    const response = await api.put(`/api/admin/join-requests/${requestId}`, { status: 'rejected' });
     return response.data;
   },
   
