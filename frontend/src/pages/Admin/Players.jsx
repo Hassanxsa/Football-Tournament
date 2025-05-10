@@ -49,8 +49,8 @@ const AdminPlayers = () => {
           });
           setPendingPlayers(formattedPendingRequests);
           
-          // Extract approved player requests
-          const approvedRequests = response.approvedRequests || [];
+          // Extract approved player requests (changed from approvedRequests to approvedPlayers to match backend API)
+          const approvedRequests = response.approvedPlayers || [];
           const formattedApprovedRequests = approvedRequests.map(req => {
             // Extract first and last names from player_name if available
             // or use email as a fallback for display
@@ -70,7 +70,9 @@ const AdminPlayers = () => {
               position: req.position,
               request_date: req.request_date,
               processed_date: req.processed_date,
-              status: 'approved'
+              status: 'approved',
+              role: req.role, // Added role field from new backend response
+              is_captain: req.role === 'captain' // Added is_captain derived from role field
             };
           });
           setApprovedPlayers(formattedApprovedRequests);
