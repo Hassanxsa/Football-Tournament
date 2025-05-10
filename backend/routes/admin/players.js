@@ -50,25 +50,53 @@ router.get(
         ORDER BY jr.created_at DESC;
       `;
 
-      // 3) Approved requests as actual team members
+      // 3) Approved requests as actual team members - simplified query to avoid start_date issues
       const approvedSql = `
-        SELECT
-          jr.request_id,
-          u.id    AS player_id,
+        SELECT 
+          COALESCE(jr.request_id, u.id) AS request_id,
+          u.id AS player_id,
           u.first_name || ' ' || u.last_name AS player_name,
+          u.email,
           u.date_of_birth,
           EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.date_of_birth))::INT AS age,
+          t.team_id,
           t.team_name,
           p.jersey_no,
-          pos.position_desc AS position,
-          CASE WHEN t.captain = u.id THEN 'captain' ELSE 'player' END AS role
+          COALESCE(pos.position_desc, p.position_to_play) AS position,
+          CASE WHEN t.captain = u.id THEN 'captain' ELSE 'player' END AS role,
+          CURRENT_TIMESTAMP AS request_date,
+          CURRENT_TIMESTAMP AS processed_date
+        FROM public.team_player tp
+        JOIN public.users u ON tp.player_id = u.id
+        JOIN public.player p ON p.player_id = u.id
+        JOIN public.team t ON tp.team_id = t.team_id
+        LEFT JOIN public.team_join_requests jr ON jr.player_id = tp.player_id AND jr.team_id = tp.team_id
+        LEFT JOIN public.playing_position pos ON pos.position_id = p.position_to_play
+        
+        UNION
+        
+        SELECT
+          jr.request_id,
+          u.id AS player_id,
+          u.first_name || ' ' || u.last_name AS player_name,
+          u.email,
+          u.date_of_birth,
+          EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.date_of_birth))::INT AS age,
+          t.team_id,
+          t.team_name,
+          p.jersey_no,
+          COALESCE(pos.position_desc, p.position_to_play) AS position,
+          CASE WHEN t.captain = u.id THEN 'captain' ELSE 'player' END AS role,
+          jr.created_at AS request_date,
+          jr.updated_at AS processed_date
         FROM public.team_join_requests jr
-        JOIN public.users            u   ON jr.player_id = u.id
-        JOIN public.player           p   ON p.player_id = u.id
-        JOIN public.team             t   ON jr.team_id   = t.team_id
-        JOIN public.playing_position pos ON jr.requested_position = pos.position_id
+        JOIN public.users u ON jr.player_id = u.id
+        JOIN public.player p ON p.player_id = u.id
+        JOIN public.team t ON jr.team_id = t.team_id
+        LEFT JOIN public.playing_position pos ON pos.position_id = p.position_to_play
         WHERE jr.status = 'accepted'
-        ORDER BY jr.updated_at DESC;
+        
+        ORDER BY processed_date DESC;
       `;
 
       const [
