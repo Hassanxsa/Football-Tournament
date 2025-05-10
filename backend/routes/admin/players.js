@@ -18,7 +18,7 @@ const router = express.Router();
 //////////// player routes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 // Get player requests  (admin only - pending and accepted)
 router.get(
-  '/',
+  '/requests',
   passport.authenticate('jwt', { session: false }),
   checkAdmin,
   async (req, res) => {
