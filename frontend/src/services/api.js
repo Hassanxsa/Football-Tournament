@@ -264,7 +264,12 @@ export const playerService = {
   
   // Player request services
   submitPlayerRequest: async (requestData) => {
-    const response = await api.post('/api/player-request', requestData);
+    // Use the correct endpoint and include all required parameters
+    const response = await api.post('/api/player-request', {
+      team_id: requestData.teamId,
+      requested_position: requestData.position,
+      jersey_no: requestData.jerseyNo || Math.floor(Math.random() * 99) + 1 // Provide a default jersey number if not supplied
+    });
     return response.data;
   },
   

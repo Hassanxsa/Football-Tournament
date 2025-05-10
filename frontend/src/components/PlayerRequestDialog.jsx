@@ -4,10 +4,10 @@ import { teamService, playerService } from '../services/api';
 const PlayerRequestDialog = ({ isOpen, onClose }) => {
   const [teams, setTeams] = useState([]);
   const [positions, setPositions] = useState([
-    { id: 'forward', name: 'Forward' },
-    { id: 'midfielder', name: 'Midfielder' },
-    { id: 'defender', name: 'Defender' },
-    { id: 'goalkeeper', name: 'Goalkeeper' }
+    { id: 'FW', name: 'Forward' },
+    { id: 'MF', name: 'Midfielder' },
+    { id: 'DF', name: 'Defender' },
+    { id: 'GK', name: 'Goalkeeper' }
   ]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -17,7 +17,8 @@ const PlayerRequestDialog = ({ isOpen, onClose }) => {
   // Form state
   const [formData, setFormData] = useState({
     teamId: '',
-    position: ''
+    position: '',
+    jerseyNo: ''
   });
   
   useEffect(() => {
@@ -59,8 +60,15 @@ const PlayerRequestDialog = ({ isOpen, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.teamId || !formData.position) {
-      setError('Please select both a team and a position.');
+    if (!formData.teamId || !formData.position || !formData.jerseyNo) {
+      setError('Please select a team, position, and jersey number.');
+      return;
+    }
+    
+    // Validate jersey number is between 1-99
+    const jerseyNumber = parseInt(formData.jerseyNo);
+    if (isNaN(jerseyNumber) || jerseyNumber < 1 || jerseyNumber > 99) {
+      setError('Jersey number must be between 1 and 99.');
       return;
     }
     
@@ -157,7 +165,7 @@ const PlayerRequestDialog = ({ isOpen, onClose }) => {
               </select>
             </div>
             
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="position">
                 Position
               </label>
@@ -176,6 +184,24 @@ const PlayerRequestDialog = ({ isOpen, onClose }) => {
                   </option>
                 ))}
               </select>
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="jerseyNo">
+                Jersey Number
+              </label>
+              <input
+                id="jerseyNo"
+                name="jerseyNo"
+                type="number"
+                min="1"
+                max="99"
+                value={formData.jerseyNo}
+                onChange={handleChange}
+                placeholder="Enter your preferred jersey number"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                disabled={submitting}
+              />
             </div>
             
             <div className="flex items-center justify-end">

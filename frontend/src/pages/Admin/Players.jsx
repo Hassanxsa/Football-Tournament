@@ -26,37 +26,53 @@ const AdminPlayers = () => {
           
           // Extract pending player requests
           const pendingRequests = response.pendingRequests || [];
-          const formattedPendingRequests = pendingRequests.map(req => ({
-            request_id: req.request_id,
-            player_id: req.user_id,
-            name: req.user_name,
-            email: req.email,
-            date_of_birth: req.date_of_birth,
-            age: req.age,
-            team_id: req.team_id,
-            team_name: req.team_name,
-            position: req.position,
-            request_date: req.request_date,
-            status: 'pending'
-          }));
+          const formattedPendingRequests = pendingRequests.map(req => {
+            // Extract first and last names from player_name if available
+            // or use email as a fallback for display
+            const displayName = req.player_name || 
+                              (req.first_name && req.last_name ? `${req.first_name} ${req.last_name}` : 
+                              (req.email ? req.email.split('@')[0] : `Player #${req.player_id}`));
+            
+            return {
+              request_id: req.request_id,
+              player_id: req.player_id,
+              name: displayName,
+              email: req.email,
+              date_of_birth: req.date_of_birth,
+              age: req.age,
+              team_id: req.team_id,
+              team_name: req.team_name,
+              position: req.position,
+              request_date: req.request_date,
+              status: 'pending'
+            };
+          });
           setPendingPlayers(formattedPendingRequests);
           
           // Extract approved player requests
           const approvedRequests = response.approvedRequests || [];
-          const formattedApprovedRequests = approvedRequests.map(req => ({
-            request_id: req.request_id,
-            player_id: req.user_id,
-            name: req.user_name,
-            email: req.email,
-            date_of_birth: req.date_of_birth,
-            age: req.age,
-            team_id: req.team_id,
-            team_name: req.team_name,
-            position: req.position,
-            request_date: req.request_date,
-            processed_date: req.processed_date,
-            status: 'approved'
-          }));
+          const formattedApprovedRequests = approvedRequests.map(req => {
+            // Extract first and last names from player_name if available
+            // or use email as a fallback for display
+            const displayName = req.player_name || 
+                              (req.first_name && req.last_name ? `${req.first_name} ${req.last_name}` : 
+                              (req.email ? req.email.split('@')[0] : `Player #${req.player_id}`));
+            
+            return {
+              request_id: req.request_id,
+              player_id: req.player_id,
+              name: displayName,
+              email: req.email,
+              date_of_birth: req.date_of_birth,
+              age: req.age,
+              team_id: req.team_id,
+              team_name: req.team_name,
+              position: req.position,
+              request_date: req.request_date,
+              processed_date: req.processed_date,
+              status: 'approved'
+            };
+          });
           setApprovedPlayers(formattedApprovedRequests);
         } else {
           setError('Failed to retrieve player requests data');
