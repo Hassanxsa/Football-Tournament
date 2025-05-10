@@ -353,7 +353,7 @@ const AdminPlayers = () => {
                 </tr>
               ) : (
                 filteredPendingPlayers.map((player) => (
-                  <tr key={player.player_id} className="hover:bg-yellow-50">
+                  <tr key={player.request_id} className="hover:bg-yellow-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{player.name}</div>
                       <div className="text-xs text-gray-500">ID: {player.player_id}</div>
@@ -427,7 +427,7 @@ const AdminPlayers = () => {
                 </tr>
               ) : (
                 filteredApprovedPlayers.map((player) => (
-                  <tr key={player.player_id} className="hover:bg-gray-50">
+                  <tr key={player.request_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{player.name}</div>
                       <div className="text-xs text-gray-500">ID: {player.player_id}</div>
